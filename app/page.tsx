@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import Navigation from "@/components/navigation"
@@ -9,11 +9,11 @@ import LoadingScreen from "@/components/loading-screen"
 
 // Dynamically import 3D components with no SSR
 const SolarSystem = dynamic(() => import("@/components/solar-system"), {
-  ssr: false
+  ssr: false,
 })
 
 const Canvas = dynamic(() => import("@react-three/fiber").then((mod) => mod.Canvas), {
-  ssr: false
+  ssr: false,
 })
 
 export default function Home() {
@@ -25,12 +25,10 @@ export default function Home() {
 
   useEffect(() => {
     setIsClient(true)
-    
     const handleScroll = () => {
       const currentScrollY = window.scrollY
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight
       const progress = Math.min(currentScrollY / maxScroll, 1)
-
       setScrollY(currentScrollY)
       setScrollProgress(progress)
     }
@@ -43,7 +41,7 @@ export default function Home() {
   const currentDistance = 12 + scrollProgress * 88
 
   // Show navigation buttons between 28-43 AU
-  const showNavigationButtons = currentDistance >= 28 && currentDistance <= 43
+  const showNavigationButtons = currentDistance >= 24 && currentDistance <= 100
 
   const navigationButtons = [
     {
@@ -124,7 +122,6 @@ export default function Home() {
           >
             MUHAMMED FURKAN KIRCI
           </motion.h1>
-
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -133,7 +130,6 @@ export default function Home() {
           >
             Bilgisayar Mühendisi • Fullstack Developer
           </motion.p>
-
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -143,7 +139,6 @@ export default function Home() {
             Temiz kod, SOLID prensipleri ve Agile metodolojilerine bağlı kalarak projelere değer katmayı amaçlayan bir
             mühendisim.
           </motion.p>
-
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -155,7 +150,6 @@ export default function Home() {
               <p className="text-sm text-gray-500">🪐 Aşağı kaydırarak uzaklaşın</p>
             </div>
           </motion.div>
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -218,101 +212,102 @@ export default function Home() {
           <p className="text-xs text-gray-500 mt-2 text-center">Zoom</p>
         </div>
 
-        {/* Distance Indicator */}
-        <div className="fixed bottom-8 left-8 z-20">
+        {/* Combined Navigation & Distance - Left Bottom */}
+        {showNavigationButtons && (
           <motion.div
-            className="bg-black/50 backdrop-blur-sm border border-gray-700 rounded-lg p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: scrollProgress > 0.2 ? 0.8 : 0 }}
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ duration: 0.5 }}
+            className="fixed bottom-4 left-4 z-20 max-w-sm sm:max-w-md md:max-w-lg"
           >
-            <p className="text-sm text-gray-300">Mesafe:</p>
-            <p className="text-lg font-bold text-yellow-400">{Math.round(currentDistance)} AU</p>
-            <p className="text-xs text-gray-500">Astronomik Birim</p>
-          </motion.div>
-        </div>
-
-        {/* Navigation Buttons (28-43 AU) - Bottom Center */}
-        <AnimatePresence>
-          {showNavigationButtons && (
+            {/* Distance Info */}
             <motion.div
-              initial={{ opacity: 0, y: 100 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 100 }}
-              transition={{ duration: 0.5 }}
-              className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-20 ml-32"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mb-3 p-3 bg-black/60 backdrop-blur-sm border border-gray-700/50 rounded-lg"
             >
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4 text-center">
-                <p className="text-sm text-gray-400 mb-1">Navigasyon Kontrolleri</p>
-                <p className="text-xs text-gray-500">{currentDistance.toFixed(0)} AU</p>
-              </motion.div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400">Mesafe</p>
+                  <p className="text-lg font-bold text-yellow-400">{Math.round(currentDistance)} AU</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">Navigasyon Kontrolleri</p>
+                  <p className="text-xs text-gray-500">Optimal Zone: 28-43 AU</p>
+                </div>
+              </div>
+            </motion.div>
 
-              <div className="flex space-x-3">
-                {navigationButtons.map((button, index) => (
-                  <motion.button
-                    key={button.name}
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                    whileHover={{ scale: 1.1, y: -5 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => router.push(button.route)}
-                    onMouseEnter={() => setHoveredPlanet(button.id)}
-                    onMouseLeave={() => setHoveredPlanet("")}
-                    className={`
-                      relative px-4 py-3 rounded-xl border backdrop-blur-sm
-                      bg-gradient-to-r ${button.bgColor} bg-opacity-20
-                      ${button.borderColor} ${button.hoverColor}
-                      transition-all duration-300 group
-                      hover:shadow-lg min-w-[100px]
-                    `}
-                    style={{
-                      boxShadow:
-                        hoveredPlanet === button.id
-                          ? `0 0 30px ${button.color}60, 0 0 60px ${button.color}30`
-                          : `0 0 20px ${button.color}20`,
-                    }}
-                  >
-                    <div className="flex flex-col items-center space-y-1">
-                      <div
-                        className="w-3 h-3 rounded-full transition-all duration-300"
-                        style={{
-                          backgroundColor: button.color,
-                          boxShadow:
-                            hoveredPlanet === button.id ? `0 0 15px ${button.color}` : `0 0 5px ${button.color}60`,
-                          transform: hoveredPlanet === button.id ? "scale(1.5)" : "scale(1)",
-                        }}
-                      />
-                      <span className="text-white font-medium text-sm group-hover:text-white transition-colors">
-                        {button.name}
-                      </span>
-                    </div>
-
-                    {/* Enhanced Hover glow effect */}
+            {/* Navigation Buttons Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+              {navigationButtons.map((button, index) => (
+                <motion.button
+                  key={button.name}
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => router.push(button.route)}
+                  onMouseEnter={() => setHoveredPlanet(button.id)}
+                  onMouseLeave={() => setHoveredPlanet("")}
+                  className={`
+            relative px-2 py-2 sm:px-3 sm:py-3 rounded-lg border backdrop-blur-sm
+            bg-gradient-to-r ${button.bgColor} bg-opacity-20
+            ${button.borderColor} ${button.hoverColor}
+            transition-all duration-300 group
+            hover:shadow-lg w-full
+          `}
+                  style={{
+                    boxShadow:
+                      hoveredPlanet === button.id
+                        ? `0 0 20px ${button.color}40, 0 0 40px ${button.color}20`
+                        : `0 0 10px ${button.color}15`,
+                  }}
+                >
+                  <div className="flex flex-col items-center space-y-1">
                     <div
-                      className={`absolute inset-0 rounded-xl transition-opacity duration-300 ${
-                        hoveredPlanet === button.id ? "opacity-30" : "opacity-0"
-                      }`}
+                      className="w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300"
                       style={{
-                        background: `radial-gradient(circle, ${button.color}60 0%, transparent 70%)`,
+                        backgroundColor: button.color,
+                        boxShadow:
+                          hoveredPlanet === button.id ? `0 0 10px ${button.color}` : `0 0 5px ${button.color}60`,
+                        transform: hoveredPlanet === button.id ? "scale(1.3)" : "scale(1)",
                       }}
                     />
-                  </motion.button>
-                ))}
-              </div>
+                    <span className="text-white font-medium text-xs sm:text-sm group-hover:text-white transition-colors text-center leading-tight">
+                      {button.name}
+                    </span>
+                  </div>
 
-              {/* Zone info */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.7 }}
-                className="mt-4 p-2 bg-black/50 backdrop-blur-sm border border-gray-700/50 rounded-lg text-center"
-              >
-                <p className="text-xs text-gray-400">Optimal Navigation Zone</p>
-                <p className="text-xs text-gray-500">28-43 AU Range</p>
-              </motion.div>
+                  {/* Enhanced Hover glow effect */}
+                  <div
+                    className={`absolute inset-0 rounded-lg transition-opacity duration-300 ${
+                      hoveredPlanet === button.id ? "opacity-20" : "opacity-0"
+                    }`}
+                    style={{
+                      background: `radial-gradient(circle, ${button.color}40 0%, transparent 70%)`,
+                    }}
+                  />
+                </motion.button>
+              ))}
+            </div>
+
+            {/* Status Indicator */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="mt-3 p-2 bg-black/40 backdrop-blur-sm border border-gray-700/30 rounded-lg text-center"
+            >
+              <div className="flex items-center justify-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <p className="text-xs text-gray-400">Navigation Active</p>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          </motion.div>
+        )}
 
         {/* Empty content area for scroll space */}
         <div className="relative z-10 min-h-[300vh]"></div>

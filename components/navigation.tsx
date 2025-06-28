@@ -10,7 +10,7 @@ const navItems = [
   { name: "Ana Sayfa", href: "/", icon: "🌟" },
   { name: "Hakkımda", href: "/hakkimda", icon: "🪐" },
   { name: "Yetenekler", href: "/yetenekler", icon: "🌍" },
-  { name: "Deneyim", href: "/deneyim", icon: "🪐" },
+  { name: "Deneyim", href: "/deneyim", icon: "🌑" },
   { name: "Projelerim", href: "/projelerim", icon: "🚀" },
   { name: "İletişim", href: "/iletisim", icon: "🌙" },
 ]
