@@ -82,7 +82,7 @@ const projects = [
   {
     title: "İçeriği Yönetilebilir Portfolyo",
     description:
-      "Şu anda gezmiş olduğunuz internet sitesinin içeriklerini MongoDB içinde tutan ve içeriğin mobil uygulamadan güncellendiği bir App",
+      "Şu anda gezmiş olduğunuz internet sitesinin içerikleri MongoDB içinde tutuluyor. Bu içerikler bir mobil uygulama üzerinden güncelleniyor.",
     technologies: ["React Native", "MongoDB", "Node.js"],
     category: "Web, Mobile",
     status: "Geliştiriliyor",

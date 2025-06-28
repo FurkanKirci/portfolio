@@ -41,7 +41,7 @@ export default function Home() {
   const currentDistance = 12 + scrollProgress * 88
 
   // Show navigation buttons between 28-43 AU
-  const showNavigationButtons = currentDistance >= 24 && currentDistance <= 100
+  const showNavigationButtons = currentDistance >= 24 && currentDistance <= 80
 
   const navigationButtons = [
     {
@@ -234,7 +234,7 @@ export default function Home() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Navigasyon Kontrolleri</p>
-                  <p className="text-xs text-gray-500">Optimal Zone: 28-43 AU</p>
+                  <p className="text-xs text-gray-500">Optimal Zone: 24-80 AU</p>
                 </div>
               </div>
             </motion.div>

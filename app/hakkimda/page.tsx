@@ -67,7 +67,7 @@ export default function AboutPage() {
                 <p className="text-gray-300 leading-relaxed text-lg">
                   Temiz kod, SOLID prensipleri ve Agile metodolojilerine bağlı kalarak projelere değer katmayı amaçlayan
                   bir mühendisim. Ön yüz geliştirme için React ve Next.js teknolojilerine hakimim. Arka uç geliştirme
-                  için ise Node.js (JavaScript), Java ve C# dillerinde tecrübeliyim.
+                  için ise Node.js, Java ve C# dillerinde tecrübeliyim.
                 </p>
 
                 <div className="space-y-4">
@@ -107,7 +107,7 @@ export default function AboutPage() {
                 </div>
 
                 <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-6 backdrop-blur-sm">
-                  <h3 className="text-xl font-semibold text-white mb-4">İkamet Geçmişi</h3>
+                  <h3 className="text-xl font-semibold text-white mb-4">İkamet Adreslerim</h3>
                   <div className="space-y-2 text-gray-300">
                     <div>• İstanbul/Avcılar</div>
                     <div>• İstanbul/Beşiktaş</div>
