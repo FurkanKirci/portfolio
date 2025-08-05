@@ -7,28 +7,16 @@ const experiences = [
   {
     title: "Fullstack Web Developer",
     company: "Rheinland Privatschule",
-    period: "2024 Ekim - Devam Ediyor",
+    period: "2024 Ağustos - Devam Ediyor",
     location: "Almanya",
-    type: "Gönüllü Jr. Frontend Developer",
+    type: "Jr. Full Stack Developer",
     achievements: [
       "Java/JSP/HTML projelerinde %80 performans artışı",
+      "Yetki bazlı ERP yönetimi ve modüller",
       "Next.js'e geçiş ile SEO ve REST API entegrasyonu",
       "SSH & Plesk ile IONOS sunucu yönetimi",
     ],
     color: "from-blue-500 to-cyan-500",
-  },
-  {
-    title: "Yazılım Tasarım ve Bilgi Teknolojileri Stajyeri",
-    company: "Pengona Yazılım Çözümleri",
-    period: "2024 Haziran - 2024 Ekim",
-    location: "Türkiye",
-    type: "Stajyer",
-    achievements: [
-      "Next.js, Node.js, MongoDB ile dinamik web projeleri geliştirme",
-      "Redux & Context ile durum yönetimi, responsive tasarım optimizasyonu",
-      "Sayfa yüklenme süresini 2 kata kadar iyileştirme",
-    ],
-    color: "from-purple-500 to-pink-500",
   },
   {
     title: "Bilgisayar Mühendisi",
