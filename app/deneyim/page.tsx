@@ -7,6 +7,7 @@ import { Calendar, MapPin, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Navigation from "@/components/navigation"
 import SpaceBackground from "@/components/space-background"
+import { seedFromString } from "@/lib/planet-textures"
 
 const experiences = [
   {
@@ -43,11 +44,11 @@ const experiences = [
 export default function ExperiencePage() {
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
-      {/* 3D Background */}
+      {/* 3D Background - same planet as the "DENEYİM" planet on the homepage */}
       <div className="fixed inset-0 z-0">
         <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
           <Suspense fallback={null}>
-            <SpaceBackground color="#8b5cf6" />
+            <SpaceBackground color="#8b5cf6" planetType="jupiter" seed={seedFromString("deneyim")} />
           </Suspense>
         </Canvas>
       </div>
@@ -78,7 +79,7 @@ export default function ExperiencePage() {
             className="max-w-4xl mx-auto"
           >
             <div className="text-center mb-16">
-              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
+              <h1 className="font-display text-5xl md:text-6xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-4">
                 İş Deneyimi
               </h1>
               <div className="w-24 h-1 bg-gradient-to-r from-purple-400 to-pink-400 mx-auto"></div>

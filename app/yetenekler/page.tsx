@@ -7,6 +7,7 @@ import { Code, Database, Server, Globe, Terminal, GitBranch, ArrowLeft } from "l
 import Link from "next/link"
 import Navigation from "@/components/navigation"
 import SpaceBackground from "@/components/space-background"
+import { seedFromString } from "@/lib/planet-textures"
 
 const skillCategories = [
   {
@@ -50,11 +51,11 @@ const skillCategories = [
 export default function SkillsPage() {
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
-      {/* 3D Background */}
+      {/* 3D Background - same planet as the "YETENEKLER" planet on the homepage */}
       <div className="fixed inset-0 z-0">
         <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
           <Suspense fallback={null}>
-            <SpaceBackground color="#06b6d4" />
+            <SpaceBackground color="#06b6d4" planetType="mars" seed={seedFromString("yetenekler")} />
           </Suspense>
         </Canvas>
       </div>
@@ -85,7 +86,7 @@ export default function SkillsPage() {
             className="max-w-6xl mx-auto"
           >
             <div className="text-center mb-16">
-              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-4">
+              <h1 className="font-display text-5xl md:text-6xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent mb-4">
                 Yeteneklerim
               </h1>
               <div className="w-24 h-1 bg-gradient-to-r from-cyan-400 to-blue-400 mx-auto"></div>

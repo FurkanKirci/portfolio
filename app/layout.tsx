@@ -1,5 +1,20 @@
 import type { Metadata } from 'next'
+import { Space_Grotesk, Orbitron } from 'next/font/google'
 import './globals.css'
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
+})
+
+const orbitron = Orbitron({
+  subsets: ['latin'],
+  weight: ['500', '600', '700', '800', '900'],
+  variable: '--font-orbitron',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Muhammed Furkan Kırci - Bilgisayar Mühendisi & Fullstack Developer',
@@ -76,7 +91,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="tr">
+    <html lang="tr" className={`${spaceGrotesk.variable} ${orbitron.variable}`}>
       <head>
         <link rel="icon" type="image/png" sizes="32x32" href="/MFKLogo.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/MFKLogo.png" />

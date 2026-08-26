@@ -7,15 +7,16 @@ import { User, MapPin, Mail, Phone, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import Navigation from "@/components/navigation"
 import SpaceBackground from "@/components/space-background"
+import { seedFromString } from "@/lib/planet-textures"
 
 export default function AboutPage() {
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
-      {/* 3D Background */}
+      {/* 3D Background - same planet as the "HAKKIMDA" planet on the homepage */}
       <div className="fixed inset-0 z-0">
         <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
           <Suspense fallback={null}>
-            <SpaceBackground color="#4f46e5" />
+            <SpaceBackground color="#4f46e5" planetType="earth" seed={seedFromString("hakkimda")} />
           </Suspense>
         </Canvas>
       </div>
@@ -46,7 +47,7 @@ export default function AboutPage() {
             className="max-w-4xl mx-auto"
           >
             <div className="text-center mb-16">
-              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
+              <h1 className="font-display text-5xl md:text-6xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-4">
                 Hakkımda
               </h1>
               <div className="w-24 h-1 bg-gradient-to-r from-blue-400 to-purple-500 mx-auto"></div>

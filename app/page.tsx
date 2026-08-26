@@ -118,7 +118,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.5 }}
-            className="text-5xl md:text-7xl lg:text-8xl font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent mb-6"
+            className="font-display text-5xl md:text-7xl lg:text-8xl font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent mb-6"
           >
             MUHAMMED FURKAN KIRCI
           </motion.h1>
@@ -309,8 +309,9 @@ export default function Home() {
           </motion.div>
         )}
 
-        {/* Empty content area for scroll space */}
-        <div className="relative z-10 min-h-[300vh]"></div>
+        {/* Empty content area for scroll space - must not intercept pointer events,
+            otherwise it sits above the fixed z-0 canvas and blocks all planet clicks/hover */}
+        <div className="relative z-10 min-h-[300vh] pointer-events-none"></div>
       </section>
 
       {/* Loading Screen */}

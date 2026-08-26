@@ -3,8 +3,18 @@
 import { useRef, useState, useMemo } from "react"
 import { useFrame, useThree } from "@react-three/fiber"
 import { Stars, Text, Environment, Float } from "@react-three/drei"
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing"
 import { useRouter } from "next/navigation"
 import * as THREE from "three"
+import {
+  createMoonMap,
+  createNebulaTexture,
+  createPlanetMaps,
+  createRingTexture,
+  createSunTexture,
+  seedFromString,
+  type PlanetType,
+} from "@/lib/planet-textures"
 
 interface SolarSystemProps {
   scrollProgress: number
@@ -19,7 +29,7 @@ interface PlanetProps {
   route: string
   orbitRadius: number
   orbitSpeed: number
-  planetType: "earth" | "mars" | "jupiter" | "venus" | "neptune"
+  planetType: PlanetType
   scrollProgress: number
   planetId: string
   isNearest: boolean
@@ -52,7 +62,7 @@ function ZoomOutCamera({ scrollProgress }: { scrollProgress: number }) {
     camera.lookAt(0, 0, 0)
 
     // Adjust FOV for more dramatic effect (only for PerspectiveCamera)
-    if ('fov' in camera) {
+    if ("fov" in camera) {
       const baseFOV = 75
       const maxFOV = 90
       const targetFOV = baseFOV + scrollProgress * (maxFOV - baseFOV)
@@ -62,6 +72,43 @@ function ZoomOutCamera({ scrollProgress }: { scrollProgress: number }) {
   })
 
   return null
+}
+
+/** Soft, colorful nebula clouds far behind everything else, always present for atmosphere. */
+function NebulaBackdrop() {
+  const groupRef = useRef<THREE.Group>(null)
+
+  const layers = useMemo(
+    () => [
+      { seed: 401, colors: ["#1a0b3d", "#4c1d95", "#7c3aed", "#0a0a1a"], radius: 220, opacity: 0.55 },
+      { seed: 733, colors: ["#022c3d", "#0891b2", "#155e75", "#0a0a1a"], radius: 240, opacity: 0.4 },
+    ],
+    [],
+  )
+
+  const textures = useMemo(() => layers.map((l) => createNebulaTexture(l.seed, l.colors)), [layers])
+
+  useFrame(() => {
+    if (groupRef.current) groupRef.current.rotation.y += 0.00004
+  })
+
+  return (
+    <group ref={groupRef}>
+      {layers.map((layer, i) => (
+        <mesh key={i} scale={layer.radius} rotation={[0, i * 1.3, i * 0.4]}>
+          <sphereGeometry args={[1, 32, 32]} />
+          <meshBasicMaterial
+            map={textures[i]}
+            transparent
+            opacity={layer.opacity}
+            side={THREE.BackSide}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
+    </group>
+  )
 }
 
 function DistantGalaxies({ scrollProgress }: { scrollProgress: number }) {
@@ -99,7 +146,7 @@ function DistantGalaxies({ scrollProgress }: { scrollProgress: number }) {
 
   const groupRef = useRef<THREE.Group>(null)
 
-  useFrame((state) => {
+  useFrame(() => {
     if (groupRef.current) {
       groupRef.current.rotation.y += 0.0001
     }
@@ -176,6 +223,28 @@ function DistantGalaxies({ scrollProgress }: { scrollProgress: number }) {
   )
 }
 
+/** A small cratered moon orbiting its parent planet. */
+function Moon({ parentSize, zoomScale, highlightScale }: { parentSize: number; zoomScale: number; highlightScale: number }) {
+  const orbitRef = useRef<THREE.Group>(null)
+  const meshRef = useRef<THREE.Mesh>(null)
+  const { map, normalMap } = useMemo(() => createMoonMap(51), [])
+  const orbitRadius = parentSize * 3.4
+
+  useFrame(() => {
+    if (orbitRef.current) orbitRef.current.rotation.y += 0.012
+    if (meshRef.current) meshRef.current.rotation.y += 0.01
+  })
+
+  return (
+    <group ref={orbitRef} scale={zoomScale * highlightScale}>
+      <mesh ref={meshRef} position={[orbitRadius, 0.3, 0]} scale={parentSize * 0.28}>
+        <sphereGeometry args={[1, 24, 24]} />
+        <meshStandardMaterial map={map} normalMap={normalMap} roughness={0.95} metalness={0} />
+      </mesh>
+    </group>
+  )
+}
+
 function Planet({
   position,
   colors,
@@ -192,6 +261,7 @@ function Planet({
   isHovered,
 }: PlanetProps) {
   const meshRef = useRef<THREE.Mesh>(null)
+  const cloudsRef = useRef<THREE.Mesh>(null)
   const groupRef = useRef<THREE.Group>(null)
   const atmosphereRef = useRef<THREE.Mesh>(null)
   const highlightRef = useRef<THREE.Mesh>(null)
@@ -202,82 +272,15 @@ function Planet({
     router.push(route)
   }
 
-  // Create planet texture based on type
-  const planetTexture = useMemo(() => {
-    const canvas = document.createElement("canvas")
-    canvas.width = 512
-    canvas.height = 256
-    const ctx = canvas.getContext("2d")!
+  const seed = useMemo(() => seedFromString(planetId), [planetId])
+  const { map, normalMap, cloudsMap, nightMap } = useMemo(() => createPlanetMaps(planetType, seed), [planetType, seed])
+  const ringTexture = useMemo(
+    () => (planetType === "jupiter" || planetType === "neptune" ? createRingTexture(colors[1], seed) : null),
+    [planetType, colors, seed],
+  )
 
-    const gradient = ctx.createLinearGradient(0, 0, 512, 256)
-
-    switch (planetType) {
-      case "earth":
-        gradient.addColorStop(0, "#1e40af")
-        gradient.addColorStop(0.3, "#3b82f6")
-        gradient.addColorStop(0.5, "#22c55e")
-        gradient.addColorStop(0.7, "#16a34a")
-        gradient.addColorStop(1, "#1e40af")
-        break
-      case "mars":
-        gradient.addColorStop(0, "#dc2626")
-        gradient.addColorStop(0.3, "#ea580c")
-        gradient.addColorStop(0.5, "#f97316")
-        gradient.addColorStop(0.7, "#dc2626")
-        gradient.addColorStop(1, "#991b1b")
-        break
-      case "jupiter":
-        gradient.addColorStop(0, "#7c3aed")
-        gradient.addColorStop(0.2, "#a855f7")
-        gradient.addColorStop(0.4, "#ec4899")
-        gradient.addColorStop(0.6, "#8b5cf6")
-        gradient.addColorStop(0.8, "#6366f1")
-        gradient.addColorStop(1, "#7c3aed")
-        break
-      case "venus":
-        gradient.addColorStop(0, "#f59e0b")
-        gradient.addColorStop(0.3, "#fbbf24")
-        gradient.addColorStop(0.5, "#f97316")
-        gradient.addColorStop(0.7, "#ea580c")
-        gradient.addColorStop(1, "#d97706")
-        break
-      case "neptune":
-        gradient.addColorStop(0, "#10b981")
-        gradient.addColorStop(0.3, "#059669")
-        gradient.addColorStop(0.5, "#047857")
-        gradient.addColorStop(0.7, "#065f46")
-        gradient.addColorStop(1, "#064e3b")
-        break
-    }
-
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, 512, 256)
-
-    // Add surface details
-    for (let i = 0; i < 800; i++) {
-      const x = Math.random() * 512
-      const y = Math.random() * 256
-      const radius = Math.random() * 2
-      const alpha = Math.random() * 0.4
-
-      ctx.globalAlpha = alpha
-      ctx.fillStyle = Math.random() > 0.5 ? "#ffffff" : "#000000"
-      ctx.beginPath()
-      ctx.arc(x, y, radius, 0, Math.PI * 2)
-      ctx.fill()
-    }
-
-    if (planetType === "jupiter") {
-      ctx.globalAlpha = 0.3
-      for (let i = 0; i < 6; i++) {
-        const y = (i / 6) * 256
-        ctx.fillStyle = i % 2 === 0 ? "#ffffff" : "#000000"
-        ctx.fillRect(0, y, 512, 40)
-      }
-    }
-
-    return new THREE.CanvasTexture(canvas)
-  }, [planetType])
+  const isGasGiant = planetType === "jupiter" || planetType === "neptune"
+  const isEarthLike = planetType === "earth"
 
   useFrame((state) => {
     if (groupRef.current) {
@@ -286,11 +289,14 @@ function Planet({
       groupRef.current.rotation.y += adjustedSpeed
     }
     if (meshRef.current) {
-      meshRef.current.rotation.y += 0.015 // 0.008'den artırıldı
-      meshRef.current.rotation.x += 0.005 // 0.002'den artırıldı
+      meshRef.current.rotation.y += 0.015
+      meshRef.current.rotation.x += 0.005
+    }
+    if (cloudsRef.current) {
+      cloudsRef.current.rotation.y += 0.021
     }
     if (atmosphereRef.current) {
-      atmosphereRef.current.rotation.y += 0.008 // 0.004'ten artırıldı
+      atmosphereRef.current.rotation.y += 0.008
     }
 
     // Highlight animation for nearest planet
@@ -318,8 +324,10 @@ function Planet({
   // Enhanced effects for nearest planet and button hover
   const isHighlighted = isNearest || isHovered || localHovered
   const highlightScale = isHovered ? 1.4 : isNearest ? 1.1 : localHovered ? 1.2 : 1
-  const highlightGlow = isHovered ? 0.8 : isNearest ? 0.4 : localHovered ? 0.6 : 0.15
+  const highlightGlow = isHovered ? 0.7 : isNearest ? 0.35 : localHovered ? 0.5 : 0.1
   const highlightAtmosphere = isHovered ? 0.6 : isNearest ? 0.35 : localHovered ? 0.5 : 0.18
+
+  const planetScale = size * 1.3 * zoomScale * highlightScale
 
   return (
     <group ref={groupRef}>
@@ -336,22 +344,50 @@ function Planet({
           )}
 
           {/* Planet Atmosphere */}
-          <mesh ref={atmosphereRef} position={position} scale={size * 1.5 * zoomScale * highlightScale}>
+          <mesh ref={atmosphereRef} position={position} scale={size * 1.55 * zoomScale * highlightScale}>
             <sphereGeometry args={[1, 32, 32]} />
-            <meshBasicMaterial color={colors[0]} transparent opacity={highlightAtmosphere} side={THREE.BackSide} />
-          </mesh>
-
-          {/* Main Planet - Increased base size */}
-          <mesh ref={meshRef} position={position} scale={size * 1.3 * zoomScale * highlightScale}>
-            <sphereGeometry args={[1, 64, 64]} />
-            <meshStandardMaterial
-              map={planetTexture}
-              roughness={0.6}
-              metalness={0.2}
-              emissive={colors[0]}
-              emissiveIntensity={highlightGlow}
+            <meshBasicMaterial
+              color={colors[0]}
+              transparent
+              opacity={highlightAtmosphere}
+              side={THREE.BackSide}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
             />
           </mesh>
+
+          {/* Main Planet - bump-mapped procedural surface */}
+          <mesh ref={meshRef} position={position} scale={planetScale} castShadow receiveShadow>
+            <sphereGeometry args={[1, 64, 64]} />
+            <meshStandardMaterial
+              map={map}
+              normalMap={normalMap}
+              normalScale={new THREE.Vector2(isGasGiant ? 0.4 : 1, isGasGiant ? 0.4 : 1)}
+              emissiveMap={nightMap}
+              emissive={nightMap ? "#ffcf7a" : colors[0]}
+              emissiveIntensity={nightMap ? 0.35 : highlightGlow}
+              roughness={isGasGiant ? 0.9 : 0.75}
+              metalness={0.05}
+            />
+          </mesh>
+
+          {/* Cloud layer for earth-like planets */}
+          {cloudsMap && (
+            <mesh ref={cloudsRef} position={position} scale={planetScale * 1.02}>
+              <sphereGeometry args={[1, 48, 48]} />
+              <meshStandardMaterial
+                alphaMap={cloudsMap}
+                color="#ffffff"
+                transparent
+                opacity={0.85}
+                depthWrite={false}
+                roughness={1}
+              />
+            </mesh>
+          )}
+
+          {/* Moon for the earth-like planet */}
+          {isEarthLike && <Moon parentSize={size} zoomScale={zoomScale} highlightScale={highlightScale} />}
 
           {/* Invisible Larger Click Area */}
           <mesh
@@ -396,14 +432,19 @@ function Planet({
           )}
 
           {/* Planet Rings */}
-          {planetType === "jupiter" && (
-            <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]} scale={zoomScale * highlightScale}>
-              <ringGeometry args={[1.8, 2.4, 64]} />
+          {ringTexture && (
+            <mesh
+              rotation={[Math.PI / 2 + (planetType === "jupiter" ? 0 : 0.35), 0, 0]}
+              position={[0, 0, 0]}
+              scale={zoomScale * highlightScale}
+            >
+              <ringGeometry args={[planetType === "jupiter" ? 1.8 : 1.5, planetType === "jupiter" ? 2.6 : 1.9, 128]} />
               <meshBasicMaterial
-                color={colors[1]}
+                map={ringTexture}
                 transparent
-                opacity={isHighlighted ? 0.8 : 0.4}
+                opacity={isHighlighted ? 1 : planetType === "jupiter" ? 0.75 : 0.4}
                 side={THREE.DoubleSide}
+                depthWrite={false}
               />
             </mesh>
           )}
@@ -420,7 +461,9 @@ function Planet({
             <meshBasicMaterial
               color={isHighlighted ? "#ffffff" : colors[0]}
               transparent
-              opacity={isHighlighted ? 0.4 : 0.15}
+              opacity={isHighlighted ? 0.35 : 0.12}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
             />
           </mesh>
         </Float>
@@ -442,38 +485,10 @@ function Planet({
 function Sun({ scrollProgress, isHovered }: { scrollProgress: number; isHovered: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const coronaRef = useRef<THREE.Mesh>(null)
+  const flareRef = useRef<THREE.Mesh>(null)
   const [localHovered, setLocalHovered] = useState(false)
 
-  const sunTexture = useMemo(() => {
-    const canvas = document.createElement("canvas")
-    canvas.width = 512
-    canvas.height = 256
-    const ctx = canvas.getContext("2d")!
-
-    const gradient = ctx.createRadialGradient(256, 128, 0, 256, 128, 256)
-    gradient.addColorStop(0, "#ffff44") // Daha sarı
-    gradient.addColorStop(0.3, "#ffdd00") // Daha sarı
-    gradient.addColorStop(0.6, "#ffaa00") // Daha sarı turuncu
-    gradient.addColorStop(1, "#ff6600") // Turuncu
-
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, 512, 256)
-
-    for (let i = 0; i < 400; i++) {
-      const x = Math.random() * 512
-      const y = Math.random() * 256
-      const radius = Math.random() * 4
-      const alpha = Math.random() * 0.6
-
-      ctx.globalAlpha = alpha
-      ctx.fillStyle = "#ffffff"
-      ctx.beginPath()
-      ctx.arc(x, y, radius, 0, Math.PI * 2)
-      ctx.fill()
-    }
-
-    return new THREE.CanvasTexture(canvas)
-  }, [])
+  const sunTexture = useMemo(() => createSunTexture(3), [])
 
   useFrame((state) => {
     if (meshRef.current) {
@@ -483,6 +498,10 @@ function Sun({ scrollProgress, isHovered }: { scrollProgress: number; isHovered:
     if (coronaRef.current) {
       coronaRef.current.rotation.y -= 0.002
       coronaRef.current.rotation.z += 0.0005
+    }
+    if (flareRef.current) {
+      const pulse = Math.sin(state.clock.elapsedTime * 1.4) * 0.08 + 1
+      flareRef.current.scale.setScalar(5.2 * pulse * (1 + scrollProgress * 0.8))
     }
   })
 
@@ -496,6 +515,11 @@ function Sun({ scrollProgress, isHovered }: { scrollProgress: number; isHovered:
     document.body.style.cursor = "auto"
   }
 
+  const handleClick = () => {
+    // The Sun represents "Ana Sayfa" (home) - scroll back up to the hero section.
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
   const zoomScale = 1 + scrollProgress * 0.8
   const planetsOpacity = scrollProgress > 0 ? Math.min(scrollProgress * 3, 1) : 0
 
@@ -505,27 +529,47 @@ function Sun({ scrollProgress, isHovered }: { scrollProgress: number; isHovered:
 
   return (
     <Float speed={0.6} rotationIntensity={0.08} floatIntensity={0.03}>
-      {/* Sun Corona - Increased size */}
-      <mesh ref={coronaRef} position={[0, 0, 0]} scale={4.0 * zoomScale * highlightScale}>
+      {/* Outer flare glow (additive, cheap "lens flare" look) */}
+      <mesh ref={flareRef} position={[0, 0, 0]}>
         <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial color="#FFD700" transparent opacity={(isHighlighted ? 0.4 : 0.25) * planetsOpacity} />
+        <meshBasicMaterial
+          color="#ffb347"
+          transparent
+          opacity={0.12 * planetsOpacity}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
       </mesh>
 
-      {/* Main Sun - Increased size */}
+      {/* Sun Corona */}
+      <mesh ref={coronaRef} position={[0, 0, 0]} scale={4.0 * zoomScale * highlightScale}>
+        <sphereGeometry args={[1, 16, 16]} />
+        <meshBasicMaterial
+          color="#FFD700"
+          transparent
+          opacity={(isHighlighted ? 0.45 : 0.28) * planetsOpacity}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      {/* Main Sun */}
       <mesh
         ref={meshRef}
         position={[0, 0, 0]}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
+        onClick={handleClick}
         scale={2.8 * zoomScale * highlightScale}
       >
         <sphereGeometry args={[1, 64, 64]} />
         <meshStandardMaterial
           map={sunTexture}
-          emissive="#FFD700" // Daha sarı altın rengi
+          emissive="#FFD700"
+          emissiveMap={sunTexture}
           emissiveIntensity={highlightIntensity * planetsOpacity}
-          roughness={0.1}
-          metalness={0.1}
+          roughness={0.2}
+          metalness={0}
           transparent
           opacity={planetsOpacity}
         />
@@ -535,7 +579,7 @@ function Sun({ scrollProgress, isHovered }: { scrollProgress: number; isHovered:
       <Text
         position={[0, 5.0 * zoomScale * highlightScale, 0]}
         fontSize={0.8 * zoomScale * (isHighlighted ? 1.2 : 1)}
-        color="#FFD700" // Daha sarı
+        color="#FFD700"
         anchorX="center"
         anchorY="middle"
         outlineWidth={0.03}
@@ -552,7 +596,7 @@ function EnhancedAsteroidBelt({ scrollProgress }: { scrollProgress: number }) {
   const asteroids = useMemo(() => {
     const temp = []
     for (let i = 0; i < 120; i++) {
-      const radius = 28.0 + Math.random() * 3.0 // 18.5'ten artırıldı
+      const radius = 28.0 + Math.random() * 3.0
       const angle = (i / 120) * Math.PI * 2
       const x = Math.cos(angle) * radius
       const z = Math.sin(angle) * radius
@@ -595,7 +639,7 @@ function EnhancedAsteroidBelt({ scrollProgress }: { scrollProgress: number }) {
 function ZoomedParticleField({ scrollProgress }: { scrollProgress: number }) {
   const points = useRef<THREE.Points>(null)
 
-  useFrame((state) => {
+  useFrame(() => {
     if (points.current) {
       points.current.rotation.y += 0.00008
       points.current.rotation.x += 0.00003
@@ -641,7 +685,7 @@ export default function SolarSystem({ scrollProgress, hoveredPlanet }: SolarSyst
   const planets = [
     {
       id: "hakkimda",
-      orbitRadius: 12.0, // 8.5'ten artırıldı
+      orbitRadius: 12.0,
       colors: ["#4f46e5", "#3b82f6"],
       size: 1.0,
       name: "HAKKIMDA",
@@ -651,7 +695,7 @@ export default function SolarSystem({ scrollProgress, hoveredPlanet }: SolarSyst
     },
     {
       id: "yetenekler",
-      orbitRadius: 16.5, // 11.5'ten artırıldı
+      orbitRadius: 16.5,
       colors: ["#06b6d4", "#0891b2"],
       size: 1.1,
       name: "YETENEKLER",
@@ -661,7 +705,7 @@ export default function SolarSystem({ scrollProgress, hoveredPlanet }: SolarSyst
     },
     {
       id: "deneyim",
-      orbitRadius: 21.0, // 14.5'ten artırıldı
+      orbitRadius: 21.0,
       colors: ["#8b5cf6", "#a855f7"],
       size: 0.9,
       name: "DENEYİM",
@@ -671,7 +715,7 @@ export default function SolarSystem({ scrollProgress, hoveredPlanet }: SolarSyst
     },
     {
       id: "projelerim",
-      orbitRadius: 31.0, // 14.5'ten artırıldı
+      orbitRadius: 31.0,
       colors: ["#10b981", "#059669"],
       size: 0.9,
       name: "PROJELERİM",
@@ -681,7 +725,7 @@ export default function SolarSystem({ scrollProgress, hoveredPlanet }: SolarSyst
     },
     {
       id: "iletisim",
-      orbitRadius: 25.5, // 17.5'ten artırıldı
+      orbitRadius: 25.5,
       colors: ["#f59e0b", "#fbbf24"],
       size: 0.8,
       name: "İLETİŞİM",
@@ -707,8 +751,8 @@ export default function SolarSystem({ scrollProgress, hoveredPlanet }: SolarSyst
       // Calculate distance to camera
       const distance = Math.sqrt(
         Math.pow(camera.position.x - planetX, 2) +
-        Math.pow(camera.position.y - planetY, 2) +
-        Math.pow(camera.position.z - planetZ, 2),
+          Math.pow(camera.position.y - planetY, 2) +
+          Math.pow(camera.position.z - planetZ, 2),
       )
 
       distances[planet.id] = distance
@@ -730,13 +774,16 @@ export default function SolarSystem({ scrollProgress, hoveredPlanet }: SolarSyst
     <>
       <ZoomOutCamera scrollProgress={scrollProgress} />
 
+      <NebulaBackdrop />
+
       <Environment preset="night" />
-      <ambientLight intensity={0.2 + scrollProgress * 0.15} />
+      <ambientLight intensity={0.22 + scrollProgress * 0.15} />
       <pointLight position={[0, 0, 0]} intensity={6 + scrollProgress * 3} color="#FDB813" />
       <pointLight position={[25, 20, 25]} intensity={1.2 + scrollProgress * 0.6} color="#4f46e5" />
       <pointLight position={[-25, 20, -25]} intensity={1.0 + scrollProgress * 0.6} color="#06b6d4" />
+      <hemisphereLight args={["#4f46e5", "#050510", 0.25]} />
 
-      <Stars radius={300 + scrollProgress * 200} depth={150} count={8000} factor={12} saturation={0} fade />
+      <Stars radius={300 + scrollProgress * 200} depth={150} count={9000} factor={12} saturation={0} fade speed={1} />
       <ZoomedParticleField scrollProgress={scrollProgress} />
 
       {/* Sadece scroll başladığında göster */}
@@ -771,6 +818,11 @@ export default function SolarSystem({ scrollProgress, hoveredPlanet }: SolarSyst
           ))}
         </>
       )}
+
+      <EffectComposer multisampling={0}>
+        <Bloom luminanceThreshold={0.82} luminanceSmoothing={0.35} intensity={0.7} mipmapBlur height={300} />
+        <Vignette eskil={false} offset={0.15} darkness={0.7} />
+      </EffectComposer>
     </>
   )
 }

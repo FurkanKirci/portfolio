@@ -42,7 +42,7 @@ export default function Navigation() {
           <Link href="/">
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent cursor-pointer"
+              className="font-display text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent cursor-pointer"
             >
               MFK ⭐
             </motion.div>
@@ -54,14 +54,20 @@ export default function Navigation() {
               <Link key={item.name} href={item.href}>
                 <motion.div
                   whileHover={{ scale: 1.05 }}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
+                  className={`relative flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
                     pathname === item.href
-                      ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 text-white"
+                      ? "bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 text-white shadow-[0_0_16px_rgba(79,70,229,0.35)]"
                       : "text-gray-300 hover:text-white hover:bg-gray-800/50"
                   }`}
                 >
                   <span>{item.icon}</span>
                   <span>{item.name}</span>
+                  {pathname === item.href && (
+                    <motion.div
+                      layoutId="nav-active-dot"
+                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-gradient-to-r from-blue-400 to-purple-400"
+                    />
+                  )}
                 </motion.div>
               </Link>
             ))}

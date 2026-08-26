@@ -8,6 +8,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import Navigation from "@/components/navigation"
 import SpaceBackground from "@/components/space-background"
+import { seedFromString } from "@/lib/planet-textures"
 
 const projects = [
   {
@@ -126,11 +127,11 @@ const projects = [
 export default function ProjectsPage() {
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
-      {/* 3D Background */}
+      {/* 3D Background - same planet as the "PROJELERİM" planet on the homepage */}
       <div className="fixed inset-0 z-0">
         <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
           <Suspense fallback={null}>
-            <SpaceBackground color="#10b981" />
+            <SpaceBackground color="#10b981" planetType="neptune" seed={seedFromString("projelerim")} />
           </Suspense>
         </Canvas>
       </div>
@@ -161,7 +162,7 @@ export default function ProjectsPage() {
             className="max-w-7xl mx-auto"
           >
             <div className="text-center mb-16">
-              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent mb-4">
+              <h1 className="font-display text-5xl md:text-6xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent mb-4">
                 Projelerim
               </h1>
               <div className="w-24 h-1 bg-gradient-to-r from-emerald-400 to-green-400 mx-auto mb-6"></div>

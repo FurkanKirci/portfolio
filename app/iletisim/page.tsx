@@ -8,6 +8,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import Navigation from "@/components/navigation"
 import SpaceBackground from "@/components/space-background"
+import { seedFromString } from "@/lib/planet-textures"
 import { sendContactEmail } from "@/app/actions/send-email"
 
 export default function ContactPage() {
@@ -36,11 +37,11 @@ export default function ContactPage() {
 
   return (
     <div className="relative min-h-screen bg-black text-white overflow-x-hidden">
-      {/* 3D Background */}
+      {/* 3D Background - same planet as the "İLETİŞİM" planet on the homepage */}
       <div className="fixed inset-0 z-0">
         <Canvas camera={{ position: [0, 0, 5], fov: 75 }}>
           <Suspense fallback={null}>
-            <SpaceBackground color="#f59e0b" />
+            <SpaceBackground color="#f59e0b" planetType="venus" seed={seedFromString("iletisim")} />
           </Suspense>
         </Canvas>
       </div>
@@ -71,7 +72,7 @@ export default function ContactPage() {
             className="max-w-4xl mx-auto"
           >
             <div className="text-center mb-16">
-              <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent mb-4">
+              <h1 className="font-display text-5xl md:text-6xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent mb-4">
                 İletişim
               </h1>
               <div className="w-24 h-1 bg-gradient-to-r from-yellow-400 to-orange-400 mx-auto"></div>
