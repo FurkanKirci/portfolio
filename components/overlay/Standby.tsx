@@ -21,6 +21,7 @@ export function Standby() {
   const power = useApp((s) => s.power)
   const ready = useApp((s) => s.ready)
   const webgl = useApp((s) => s.webgl)
+  const softwareGL = useApp((s) => s.softwareGL)
   const anchor = useRef<HTMLDivElement>(null)
   const ring = useRef<SVGCircleElement>(null)
   const [hint, setHint] = useState(false)
@@ -134,9 +135,17 @@ export function Standby() {
       </div>
 
       <div className="absolute bottom-[calc(var(--gutter)*0.6)] left-[var(--gutter)] right-[var(--gutter)] flex items-end justify-between gap-6">
-        <p className="max-w-[34ch] t-mono text-[11px] leading-relaxed text-dim">
-          Bu site bir bilgisayarın açılıştan kapanışa ömrünü anlatıyor. Sesli; sağ üstten ya da M ile kapatabilirsin.
-        </p>
+        <div className="max-w-[44ch] space-y-3">
+          {softwareGL && (
+            <p className="t-mono text-[11px] leading-relaxed text-heat" role="note">
+              Tarayıcın ekran kartını kullanmıyor; sahne takılabilir. Chrome/Edge: Ayarlar → Sistem → “Kullanılabilir olduğunda grafik
+              hızlandırmayı kullan”.
+            </p>
+          )}
+          <p className="max-w-[34ch] t-mono text-[11px] leading-relaxed text-dim">
+            Bu site bir bilgisayarın açılıştan kapanışa ömrünü anlatıyor. Sesli; sağ üstten ya da M ile kapatabilirsin.
+          </p>
+        </div>
         <button
           type="button"
           className="btn-ghost pointer-events-auto hit shrink-0 whitespace-nowrap"

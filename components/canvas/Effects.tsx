@@ -11,13 +11,14 @@ interface Props {
   dof: boolean
   bloom: boolean
   ao: boolean
+  smaa: boolean
 }
 
 /**
  * Sinematik son işleme: alan derinliği (makro çekim hissi), yalnızca gerçekten parlak
  * noktalara bloom, AgX ton eşleme, hafif vinyet ve film greni.
  */
-export function Effects({ dof, bloom, ao }: Props) {
+export function Effects({ dof, bloom, ao, smaa }: Props) {
   const dofRef = useRef<DepthOfFieldEffect>(null)
   const focus = useRef(10)
 
@@ -38,7 +39,7 @@ export function Effects({ dof, bloom, ao }: Props) {
       <ToneMapping mode={ToneMappingMode.AGX} />
       <Vignette offset={0.28} darkness={0.62} />
       <Noise premultiply={false} blendFunction={BlendFunction.OVERLAY} opacity={0.32} />
-      <SMAA />
+      <>{smaa ? <SMAA /> : null}</>
     </EffectComposer>
   )
 }

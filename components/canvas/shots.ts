@@ -31,4 +31,4 @@ export const BOARD_SHOTS = {
 export const CITY_ENTRY_HEIGHT = (BOARD_SHOTS.dive.pos.y - DIE.y) * (72 / DIE.d)
 
 /** Geliştirme: kamerayı elle sabitlemek için (`__mfk.shot([x,y,z],[x,y,z],fov)`). */
-export const debugShot: { pose: Pose | null; camera: THREE.Camera | null } = { pose: null, camera: null }
+export const debugShot: { pose: Pose | null; camera: THREE.Camera | null; gl: THREE.WebGLRenderer | null } = { pose: null, camera: null, gl: null }

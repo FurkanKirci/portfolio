@@ -44,6 +44,8 @@ export function Bios() {
   const open = useApp((s) => s.bios)
   const saved = useApp((s) => s.settings)
   const autoTier = useApp((s) => s.autoTier)
+  const render = useApp((s) => s.render)
+  const softwareGL = useApp((s) => s.softwareGL)
   const [draft, setDraft] = useState<Settings>(saved)
   const draftRef = useRef(draft)
   draftRef.current = draft
@@ -84,7 +86,14 @@ export function Bios() {
         { label: 'BIOS sürümü', value: () => `${profile.board} ${profile.boardRev} · 2026.10`, help: 'Bu kartın donanım yazılımı. Konya’da derlendi.' },
         { label: 'İşlemci', value: () => `${profile.name} @ 25.000 MHz`, help: 'Tek çekirdekli değil: altı çekirdek, her biri bir yetenek alanı.' },
         { label: 'Bellek', value: () => 'Bilgisayar Mühendisliği · NEÜ · 2019–2024', help: 'Eğitim tamamlandı. Yüksek lisans ile genişletiliyor.' },
-        { label: 'GPU', value: () => info?.gpu ?? '…', help: 'Senin ekran kartın. Sahne kalitesi buna göre otomatik seçilir.', section: 'Ziyaretçi sistemi' },
+        {
+          label: 'GPU',
+          value: () => (softwareGL ? `${info?.gpu ?? '…'} · YAZILIM` : (info?.gpu ?? '…')),
+          help: softwareGL
+            ? 'Tarayıcın ekran kartını kullanmıyor, sahneyi işlemciyle çiziyor; bu yüzden yavaş. Chrome/Edge: Ayarlar → Sistem → “Kullanılabilir olduğunda grafik hızlandırmayı kullan” açık olmalı, sonra tarayıcıyı yeniden başlat.'
+            : 'Senin ekran kartın. Sahne kalitesi buna göre otomatik seçilir.',
+          section: 'Ziyaretçi sistemi',
+        },
         { label: 'İşlemci', value: () => info?.threads ?? '…', help: 'navigator.hardwareConcurrency' },
         { label: 'Bellek', value: () => info?.mem ?? '…', help: 'navigator.deviceMemory (tarayıcı yuvarlar).' },
         { label: 'Ekran', value: () => info?.screen ?? '…', help: 'Fiziksel çözünürlük ve piksel oranı.' },
@@ -114,6 +123,11 @@ export function Bios() {
           help: 'Ana ses düzeyi.',
         },
         { label: 'Kare hızı', value: () => '', help: 'Şu anki kare hızı.' },
+        {
+          label: 'Çizim çözünürlüğü',
+          value: () => (render.w ? `${render.w}×${render.h} · %${Math.round(render.scale * 100)}` : '…'),
+          help: 'Kare hızı düşünce çözünürlük kendiliğinden iner, akıcılık korunur; rahatlayınca geri çıkar.',
+        },
       ],
       Önyükleme: [
         {
@@ -138,7 +152,7 @@ export function Bios() {
       ],
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.quality, autoTier, info])
+  }, [draft.quality, autoTier, info, render, softwareGL])
 
   const list = items[TABS[tab]]
 

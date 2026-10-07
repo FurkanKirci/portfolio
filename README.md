@@ -78,7 +78,9 @@ Arama motorları ve ekran okuyucular için aynı içerik `components/SrContent.t
 
 Kalite kademesi (Düşük, Orta, Yüksek, Ultra) ekran kartına göre otomatik seçilir. Çalışırken kare hızı düşerse kademe kendiliğinden iner. Ziyaretçi bunu **Kurulum** (BIOS, `DEL` tuşu) ekranından değiştirebilir. Ayarlar tarayıcıda saklanır.
 
-Test için adrese `?q=low`, `?q=medium`, `?q=high` ya da `?q=ultra` eklenebilir. `?debug` eklenirse tarayıcı konsolunda `__mfk` nesnesi açılır, örneğin `__mfk.goto(4.5)` doğrudan deneyim bölümünün ortasına gider. Geliştirme modunda bu nesne her zaman açıktır.
+Kare hızı 50'nin altına düşerse önce çizim çözünürlüğü kademeli olarak iner (en fazla %60'a), toparlanınca geri çıkar. Yetmezse kalite bir kademe düşer. Düşük ve Orta kademede kart, alan ışıkları ve vernik katmanı olmadan, çok daha ucuz bir ışıklandırmayla çizilir. Tarayıcı ekran kartını kullanmıyorsa (yazılımla çizim) bekleme ekranında ve BIOS'ta uyarı çıkar.
+
+Test için adrese `?q=low`, `?q=medium`, `?q=high` ya da `?q=ultra` eklenebilir. `?res=1` çözünürlük ölçeğini sabitler. `?debug` eklenirse tarayıcı konsolunda `__mfk` nesnesi açılır, örneğin `__mfk.goto(4.5)` doğrudan deneyim bölümünün ortasına gider. Geliştirme modunda bu nesne her zaman açıktır.
 
 WebGL 2 yoksa site 3B sahnesiz, yalnızca metinle çalışır. İşletim sisteminde "hareketi azalt" açıksa kamera sarsıntısı ve paralaks azaltılır. Ziyaretçi bunu BIOS ekranından da değiştirebilir.
 

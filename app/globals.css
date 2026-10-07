@@ -134,6 +134,9 @@ a {
 .fade-in {
   opacity: var(--o, 0);
   transform: translate3d(0, calc((1 - var(--o, 0)) * 14px), 0);
+}
+/* yalnızca etkin bölümün öğeleri ayrı katmanda: her karede yeniden boyanmasınlar */
+.layer[data-on='1'] .fade-in {
   will-change: opacity, transform;
 }
 

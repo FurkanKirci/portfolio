@@ -10,7 +10,7 @@ import { CHANNEL_Z, YEAR_Z, analyzerX } from '@/components/canvas/analyzer/geome
 import { particleState } from '@/components/canvas/particles/Particles'
 import { lonLatToXZ } from '@/components/canvas/terrain/data'
 import { BOOT } from '@/lib/boot'
-import { channels, cores, hops, timeline } from '@/lib/content'
+import { channels, cores, hops, offMap, timeline } from '@/lib/content'
 import { activeHop } from '@/lib/film'
 import { LANE_W } from '@/lib/procs'
 import { smoothstep } from '@/lib/math'
@@ -161,11 +161,11 @@ export function LabelsLayer() {
 
       {/* Türkiye: atlamalar */}
       {hops.map((h, i) => {
-        if (h.remote) return null
+        if (offMap(h)) return null
         const first = hops.findIndex((x) => x.host === h.host) === i
         if (!first) return null
         const [x, z] = lonLatToXZ(h.lon, h.lat)
-        const years = hops.filter((x) => x.host === h.host).map((x) => x.year)
+        const visits = hops.filter((x) => x.host === h.host).map((x) => x.year || x.note)
         const idx = hops.map((x, k) => (x.host === h.host ? k : -1)).filter((k) => k >= 0)
         return (
           <Label3D
@@ -182,27 +182,49 @@ export function LabelsLayer() {
           >
             <div className="-translate-x-1/2 -translate-y-full whitespace-nowrap pb-2 text-center">
               <p className="text-[15px] font-[520] text-ink">{h.city}</p>
-              <p className="t-mono text-[10px] tracking-[0.12em] text-ice">{years.join(' · ')}</p>
+              <p className="t-mono text-[10px] tracking-[0.12em] text-ice">{visits.join(' · ')}</p>
             </div>
           </Label3D>
         )
       })}
-      <Label3D
-        id="hop-remote"
-        className="max-sm:hidden"
-        world="terrain"
-        pos={(() => {
-          const ist = hops.find((h) => h.host === 'istanbul')!
-          const [x, z] = lonLatToXZ(ist.lon, ist.lat)
-          return [x - 22, 9, z - 13] as [number, number, number]
-        })()}
-        visible={(F) => (activeHop(F) >= 4 ? win(F, 5.06, 5.1, 5.97, 6.02) : 0)}
-      >
-        <div className="-translate-x-1/2 -translate-y-full whitespace-nowrap pb-2 text-center">
-          <p className="t-mono text-[13px] text-heat">* * *</p>
-          <p className="t-mono text-[10px] tracking-[0.12em] text-mute">düsseldorf · uzaktan</p>
-        </div>
-      </Label3D>
+      {/* Haritanın dışındaki duraklar: yay ufka uzanırken yanında asılı durur */}
+      {hops.map((h, i) => {
+        if (!offMap(h)) return null
+        let k = i - 1
+        while (k > 0 && offMap(hops[k])) k--
+        const from = hops[Math.max(0, k)]
+        const [fx, fz] = lonLatToXZ(from.lon, from.lat)
+        const [tx, tz] = lonLatToXZ(h.lon, h.lat)
+        const len = Math.hypot(tx - fx, tz - fz) || 1
+        const pos: [number, number, number] = [fx + ((tx - fx) / len) * 25.5, 9, fz + ((tz - fz) / len) * 25.5]
+        return (
+          <Label3D
+            key={`off-${h.n}`}
+            id={`hop-off-${h.n}`}
+            className="max-sm:hidden"
+            world="terrain"
+            pos={pos}
+            visible={(F) => (activeHop(F) > i ? win(F, 5.06, 5.1, 5.97, 6.02) : 0)}
+          >
+            <div className="-translate-x-1/2 -translate-y-full whitespace-nowrap pb-2 text-center">
+              {h.remote ? (
+                <>
+                  <p className="t-mono text-[13px] text-heat">* * *</p>
+                  <p className="t-mono text-[10px] tracking-[0.12em] text-mute">{h.city.toLocaleLowerCase('tr')} · uzaktan</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[15px] font-[520] text-ink">
+                    {h.city}
+                    {h.country && <span className="font-[400] text-mute">, {h.country}</span>}
+                  </p>
+                  <p className="t-mono text-[10px] tracking-[0.12em] text-ice">{h.year || h.note}</p>
+                </>
+              )}
+            </div>
+          </Label3D>
+        )
+      })}
     </div>
   )
 }

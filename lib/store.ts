@@ -66,6 +66,10 @@ interface AppState {
   webgl: boolean
   chapter: ChapterId
   autoTier: Tier
+  /** çizim tamponu: dinamik çözünürlük ölçeğiyle birlikte (BIOS'ta gösterilir) */
+  render: { w: number; h: number; scale: number }
+  /** tarayıcı ekran kartını kullanmıyor (yazılımla çizim) */
+  softwareGL: boolean
   settings: Settings
   bios: boolean
   menu: boolean
@@ -95,6 +99,8 @@ export const useApp = create<AppState>((set, get) => ({
   webgl: true,
   chapter: 'hero',
   autoTier: 'high',
+  render: { w: 0, h: 0, scale: 1 },
+  softwareGL: false,
   settings: defaultSettings,
   bios: false,
   menu: false,
@@ -155,4 +161,6 @@ export const frame = {
   snap: 0,
   /** yalnızca geliştirme: açılış saniyesini sabitler (≥ 0 ise) */
   debugBootT: -1,
+  /** kare başına ana iş parçacığı süresi (ms, yumuşatılmış) */
+  cpuMs: 0,
 }

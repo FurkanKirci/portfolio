@@ -78,7 +78,9 @@ export function SrContent() {
       <ol>
         {hops.map((h) => (
           <li key={h.n}>
-            {h.city} {h.year}: {h.note}
+            {h.city}
+            {h.country ? `, ${h.country}` : ''}
+            {h.year ? ` ${h.year}` : ''}: {h.note}
           </li>
         ))}
       </ol>

@@ -16,7 +16,7 @@ export function Journey() {
       hops.map((h, i) => {
         const prev = hops[i - 1]
         const km = prev && !h.remote && !prev.remote ? Math.round(haversineKm(prev.lat, prev.lon, h.lat, h.lon)) : null
-        return { ...h, km }
+        return { ...h, km: km === null ? null : km.toLocaleString('tr-TR') }
       }),
     [],
   )
@@ -64,8 +64,8 @@ export function Journey() {
                     <>
                       <span className={current ? 'text-ice' : 'text-ink'}>{h.host}</span>
                       <span className="text-right tabular-nums text-mute">{h.km === null ? '—' : `${h.km} km`}</span>
-                      <span className="text-dim">{h.year}</span>
-                      <span className={`truncate ${current ? 'text-ink' : 'text-mute'}`}>{h.note}</span>
+                      <span className="text-dim">{h.year || '—'}</span>
+                      <span className={`truncate ${current ? 'text-ink' : 'text-mute'}`}>{h.country ? `${h.country.toLowerCase()} · ${h.note}` : h.note}</span>
                     </>
                   )}
                 </li>
@@ -74,7 +74,7 @@ export function Journey() {
           </ol>
         </div>
         <p className="fade-in mt-6 max-w-[46ch] text-[14px] leading-relaxed text-mute" data-in="0.86" data-out="0.95">
-          Gerçek yükselti verisiyle çizilmiş Türkiye. Düsseldorf atlaması yanıt vermiyor: o dönem paketlerim oraya uzaktan gidip geldi.
+          Gerçek yükselti verisiyle çizilmiş Türkiye. Trablus haritanın dışında kalıyor; Düsseldorf atlaması ise yanıt vermiyor: o dönem paketlerim oraya uzaktan gidip geldi.
         </p>
       </div>
     </Layer>

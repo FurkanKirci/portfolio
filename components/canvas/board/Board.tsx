@@ -5,6 +5,7 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { frame, useApp } from '@/lib/store'
 import { smoothstep } from '@/lib/math'
 import { BOARD, DIE, boardLayout, glowTraces, type Part } from './layout'
@@ -14,9 +15,24 @@ import { presence } from '../uniforms'
 
 /* ----------------------------------------------------------------- malzemeler */
 
-function materials() {
+/** Hafif modda fiziksel malzemeler (vernik katmanı, anizotropi, yanardönerlik) standart malzemeye iner. */
+function physOrStd(o: THREE.MeshPhysicalMaterialParameters, lite: boolean): THREE.MeshStandardMaterial {
+  if (!lite) return new THREE.MeshPhysicalMaterial(o)
+  const { clearcoat, clearcoatRoughness, anisotropy, anisotropyRotation, iridescence, iridescenceIOR, iridescenceThicknessRange, ...rest } = o
+  void clearcoat
+  void anisotropy
+  void anisotropyRotation
+  void iridescence
+  void iridescenceIOR
+  void iridescenceThicknessRange
+  // vernik katmanının parlaklığını biraz pürüzlülükten telafi et
+  if (clearcoatRoughness !== undefined && rest.roughness !== undefined) rest.roughness = Math.min(rest.roughness, (rest.roughness + clearcoatRoughness) / 2 + 0.04)
+  return new THREE.MeshStandardMaterial(rest as THREE.MeshStandardMaterialParameters)
+}
+
+function materials(lite: boolean) {
   const std = (o: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial(o)
-  const phys = (o: THREE.MeshPhysicalMaterialParameters) => new THREE.MeshPhysicalMaterial(o)
+  const phys = (o: THREE.MeshPhysicalMaterialParameters) => physOrStd(o, lite)
   return {
     epoxy: std({ color: '#121418', roughness: 0.5, metalness: 0 }),
     plastic: std({ color: '#181b21', roughness: 0.62 }),
@@ -48,10 +64,18 @@ function withTop(side: THREE.Material, top: THREE.Material) {
   return [side, side, top, side, side, side]
 }
 
+const topMats = new WeakMap<THREE.Material, Map<THREE.Texture, THREE.MeshStandardMaterial>>()
+/** Üstü yazılı bir malzeme; aynı taban + aynı doku tek malzemeyi paylaşır (birleştirilince tek çizim) */
 function topMat(base: THREE.MeshStandardMaterial, tex: THREE.Texture) {
-  const m = base.clone()
-  m.map = tex
-  m.color = new THREE.Color('#ffffff')
+  let byTex = topMats.get(base)
+  if (!byTex) topMats.set(base, (byTex = new Map()))
+  let m = byTex.get(tex)
+  if (!m) {
+    m = base.clone()
+    m.map = tex
+    m.color = new THREE.Color('#ffffff')
+    byTex.set(tex, m)
+  }
   return m
 }
 
@@ -133,19 +157,20 @@ interface Model {
   qcode: SevenSeg
   qMat: THREE.MeshBasicMaterial
   dbgMats: THREE.MeshBasicMaterial[]
-  dieMat: THREE.MeshPhysicalMaterial
+  dieMat: THREE.MeshStandardMaterial
   xtalHalo: THREE.Sprite
   glowMat: THREE.ShaderMaterial
   ledLight: THREE.PointLight
-  key: THREE.RectAreaLight
-  rim: THREE.RectAreaLight
-  sweep: THREE.RectAreaLight
+  key: THREE.Light
+  rim: THREE.Light
+  sweep: THREE.Light
+  lite: boolean
   dispose: () => void
 }
 
-function buildModel(texSize: number, aniso: number): Model {
+function buildModel(texSize: number, aniso: number, lite: boolean): Model {
   const L = boardLayout()
-  const M = materials()
+  const M = materials(lite)
   const group = new THREE.Group()
   group.name = 'board'
   const disposables: { dispose: () => void }[] = []
@@ -163,34 +188,40 @@ function buildModel(texSize: number, aniso: number): Model {
   group.add(pcb)
   const topGeo = new THREE.PlaneGeometry(BOARD.w, BOARD.d)
   topGeo.rotateX(-Math.PI / 2)
-  const boardMat = new THREE.MeshPhysicalMaterial({
-    map: tex.color,
-    bumpMap: tex.data,
-    bumpScale: 2.2,
-    roughnessMap: tex.data,
-    metalnessMap: tex.data,
-    roughness: 1,
-    metalness: 1,
-    clearcoat: 0.55,
-    clearcoatRoughness: 0.32,
-  })
+  const boardMat = physOrStd(
+    {
+      map: tex.color,
+      bumpMap: tex.data,
+      bumpScale: 2.2,
+      roughnessMap: tex.data,
+      metalnessMap: tex.data,
+      roughness: 1,
+      metalness: 1,
+      clearcoat: 0.55,
+      clearcoatRoughness: 0.32,
+    },
+    lite,
+  )
   const top = new THREE.Mesh(topGeo, boardMat)
   group.add(top)
 
   const dieTex = track(makeDieTexture(texSize >= 3000 ? 2048 : 1536))
-  const dieMat = new THREE.MeshPhysicalMaterial({
-    map: dieTex,
-    emissiveMap: dieTex,
-    emissive: new THREE.Color('#9fdcff'),
-    emissiveIntensity: 0,
-    metalness: 0.5,
-    roughness: 0.16,
-    iridescence: 0.45,
-    iridescenceIOR: 1.45,
-    iridescenceThicknessRange: [90, 320],
-    clearcoat: 1,
-    clearcoatRoughness: 0.05,
-  })
+  const dieMat = physOrStd(
+    {
+      map: dieTex,
+      emissiveMap: dieTex,
+      emissive: new THREE.Color('#9fdcff'),
+      emissiveIntensity: 0,
+      metalness: 0.5,
+      roughness: 0.16,
+      iridescence: 0.45,
+      iridescenceIOR: 1.45,
+      iridescenceThicknessRange: [90, 320],
+      clearcoat: 1,
+      clearcoatRoughness: 0.05,
+    },
+    lite,
+  )
 
   const labelTextures = new Map<string, THREE.Texture>()
   const label = (key: string, lines: string[], aspect: number, opts?: Parameters<typeof chipTopTexture>[2]) => {
@@ -436,7 +467,7 @@ function buildModel(texSize: number, aniso: number): Model {
         const t = label('bat', ['CR2032', '3V  +'], 1, { dark: '#cfd6de', ink: 'rgba(40,46,56,0.7)', logo: false })
         const disc = new THREE.Mesh(
           new THREE.CircleGeometry(0.98, 64).rotateX(-Math.PI / 2),
-          new THREE.MeshPhysicalMaterial({ map: t, metalness: 1, roughness: 0.18 }),
+          physOrStd({ map: t, metalness: 1, roughness: 0.18 }, lite),
         )
         disc.position.set(p.x, 0.361, p.z)
         group.add(disc)
@@ -502,18 +533,40 @@ function buildModel(texSize: number, aniso: number): Model {
   xtalHalo.scale.setScalar(2.4)
   group.add(xtalHalo)
 
-  // Stüdyo ışıkları
-  RectAreaLightUniformsLib.init()
-  const key = new THREE.RectAreaLight('#d8ecff', 0, 30, 7)
-  key.position.set(-11, 17, 13)
-  key.lookAt(0, 0, 0)
-  const rim = new THREE.RectAreaLight('#93c9ff', 0, 34, 1.6)
-  rim.position.set(7, 4.5, -16)
-  rim.lookAt(0, 0, 1)
-  const sweep = new THREE.RectAreaLight('#e8f6ff', 0, 1.8, 36)
-  sweep.position.set(-20, 8, 6)
-  sweep.lookAt(-20, 0, 0)
-  group.add(key, rim, sweep)
+  // Durağan parçaları malzemeye göre birleştir: yüzlerce çizim çağrısı birkaç düzineye iner
+  if (!(typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('nomerge'))) mergeStatic(group)
+
+  // Stüdyo ışıkları. Hafif modda alan ışıkları yerine çok daha ucuz yönlü/nokta ışıklar.
+  let key: THREE.Light
+  let rim: THREE.Light
+  let sweep: THREE.Light
+  if (lite) {
+    const k = new THREE.DirectionalLight('#d8ecff', 0)
+    k.position.set(-11, 17, 13)
+    const r = new THREE.DirectionalLight('#93c9ff', 0)
+    r.position.set(7, 4.5, -16)
+    const sw = new THREE.PointLight('#e8f6ff', 0, 14, 1.6)
+    sw.position.set(-20, 3, 1)
+    key = k
+    rim = r
+    sweep = sw
+    group.add(k, k.target, r, r.target, sw)
+  } else {
+    RectAreaLightUniformsLib.init()
+    const k = new THREE.RectAreaLight('#d8ecff', 0, 30, 7)
+    k.position.set(-11, 17, 13)
+    k.lookAt(0, 0, 0)
+    const r = new THREE.RectAreaLight('#93c9ff', 0, 34, 1.6)
+    r.position.set(7, 4.5, -16)
+    r.lookAt(0, 0, 1)
+    const sw = new THREE.RectAreaLight('#e8f6ff', 0, 1.8, 36)
+    sw.position.set(-20, 8, 6)
+    sw.lookAt(-20, 0, 0)
+    key = k
+    rim = r
+    sweep = sw
+    group.add(k, r, sw)
+  }
 
   // Parlayan izler (açılışta akımın yolculuğu)
   const glowMat = glowMaterial()
@@ -548,7 +601,76 @@ function buildModel(texSize: number, aniso: number): Model {
     key,
     rim,
     sweep,
+    lite,
     dispose: disposeAll,
+  }
+}
+
+/**
+ * Grubun doğrudan çocuğu olan durağan, opak ağları malzemelerine göre tek geometride birleştirir.
+ * Çok malzemeli kutular (yan yüz + yazılı üst yüz) yüz gruplarına ayrılıp ilgili kovaya düşer.
+ */
+function mergeStatic(group: THREE.Group) {
+  group.updateMatrixWorld(true)
+  const buckets = new Map<THREE.Material, THREE.BufferGeometry[]>()
+  const order: THREE.Material[] = []
+  const removed: THREE.Mesh[] = []
+  const KEEP = ['position', 'normal', 'uv']
+  const clean = (g: THREE.BufferGeometry) => {
+    for (const name of Object.keys(g.attributes)) if (!KEEP.includes(name)) g.deleteAttribute(name)
+    for (const name of KEEP) {
+      if (g.getAttribute(name)) continue
+      const n = g.getAttribute('position').count
+      g.setAttribute(name, new THREE.Float32BufferAttribute(new Float32Array(n * (name === 'uv' ? 2 : 3)), name === 'uv' ? 2 : 3))
+    }
+    g.morphAttributes = {}
+    return g
+  }
+  const push = (mat: THREE.Material, g: THREE.BufferGeometry) => {
+    let list = buckets.get(mat)
+    if (!list) {
+      buckets.set(mat, (list = []))
+      order.push(mat)
+    }
+    list.push(g)
+  }
+  for (const child of [...group.children]) {
+    const mesh = child as THREE.Mesh
+    if (!mesh.isMesh || (mesh as unknown as THREE.InstancedMesh).isInstancedMesh) continue
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    if (mats.some((m) => m.transparent || (m as THREE.ShaderMaterial).isShaderMaterial)) continue
+    let g = mesh.geometry.clone()
+    g.applyMatrix4(mesh.matrixWorld)
+    if (g.index) g = g.toNonIndexed()
+    clean(g)
+    if (Array.isArray(mesh.material) && g.groups.length) {
+      for (const grp of g.groups) {
+        const mat = mesh.material[grp.materialIndex ?? 0]
+        if (!mat) continue
+        const sub = new THREE.BufferGeometry()
+        for (const name of KEEP) {
+          const a = g.getAttribute(name) as THREE.BufferAttribute
+          sub.setAttribute(name, new THREE.BufferAttribute(a.array.slice(grp.start * a.itemSize, (grp.start + grp.count) * a.itemSize), a.itemSize))
+        }
+        push(mat, sub)
+      }
+    } else {
+      g.clearGroups()
+      push(mats[0], g)
+    }
+    removed.push(mesh)
+  }
+  for (const mesh of removed) {
+    group.remove(mesh)
+    mesh.geometry.dispose()
+  }
+  for (const mat of order) {
+    const list = buckets.get(mat)!
+    const merged = mergeGeometries(list, false)
+    list.forEach((g) => g.dispose())
+    if (!merged) continue
+    merged.computeBoundingSphere()
+    group.add(new THREE.Mesh(merged, mat))
   }
 }
 
@@ -678,8 +800,8 @@ function glowMaterial() {
 
 /* --------------------------------------------------------------- bileşen */
 
-export function Board({ texSize, aniso }: { texSize: number; aniso: number }) {
-  const model = useMemo(() => buildModel(texSize, aniso), [texSize, aniso])
+export function Board({ texSize, aniso, lite }: { texSize: number; aniso: number; lite: boolean }) {
+  const model = useMemo(() => buildModel(texSize, aniso, lite), [texSize, aniso, lite])
   const scene = useThree((s) => s.scene)
   useEffect(() => () => model.dispose(), [model])
 
@@ -701,13 +823,20 @@ export function Board({ texSize, aniso }: { texSize: number; aniso: number }) {
 
     // Stüdyo ışıkları ve açılıştaki ışık süpürmesi
     const env = sys.env
-    model.key.intensity = env * 2.6
-    model.rim.intensity = env * 9
     const bt = frame.bootT
     const sweepT = power === 'booting' ? smoothstep(0.5, 2.0, bt) : power === 'on' ? 1 : 0
+    const sweepI = power === 'booting' ? Math.sin(sweepT * Math.PI) : 0
     model.sweep.position.x = -18 + sweepT * 36
-    model.sweep.lookAt(model.sweep.position.x, 0, 0)
-    model.sweep.intensity = power === 'booting' ? Math.sin(sweepT * Math.PI) * 18 : 0
+    if (model.lite) {
+      model.key.intensity = env * 1.35
+      model.rim.intensity = env * 1.6
+      model.sweep.intensity = sweepI * 34
+    } else {
+      model.key.intensity = env * 2.6
+      model.rim.intensity = env * 9
+      model.sweep.lookAt(model.sweep.position.x, 0, 0)
+      model.sweep.intensity = sweepI * 18
+    }
 
     // Fan: hızlandıkça kanatlar bulanık bir diske dönüşür (gerçek kameradaki gibi)
     const rpm = sys.rpm

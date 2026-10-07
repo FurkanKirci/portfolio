@@ -13,7 +13,9 @@ export function cursorYear(F: number) {
 
 /** Yolculuk bölümünde uçuş ilerlemesi: 0 başlangıç, 1..n atlamalar, n+1 bitiş. */
 export function flightT(F: number) {
-  return smootherstep(5.04, 6.0, F)
+  // Neredeyse doğrusal: atlamalar kaydırmaya eşit aralıklarla yayılsın (uçlarda hafif yumuşama)
+  const x = clamp((F - 5.04) / 0.96)
+  return lerp(x, smootherstep(0, 1, x), 0.3)
 }
 
 export function activeHop(F: number) {

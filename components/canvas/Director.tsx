@@ -3,7 +3,7 @@
 import { useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { hops } from '@/lib/content'
+import { hops, offMap } from '@/lib/content'
 import { cursorYear, flightT } from '@/lib/film'
 import { laneClassOf } from '@/lib/procs'
 import { clamp, damp, invLerp, lerp, smootherstep, smoothstep } from '@/lib/math'
@@ -17,6 +17,12 @@ import { BOARD_SHOTS, CITY_ENTRY_HEIGHT, debugShot, type Pose } from './shots'
 import { BOOT, sys, updateSystem } from './system'
 import { lonLatToXZ } from './terrain/data'
 import { presence, shared, type WorldId } from './uniforms'
+
+// Her karede yeniden ayrılmasın diye paylaşılan geçici vektörler
+const AXIS_Y = new THREE.Vector3(0, 1, 0)
+const AXIS_NEG_Z = new THREE.Vector3(0, 0, -1)
+const tmpOffset = new THREE.Vector3()
+const tmpRight = new THREE.Vector3()
 
 /** Alan derinliği için Effects'in okuduğu durum. */
 export const dofState = { focus: 10, range: 6, bokeh: 3 }
@@ -138,14 +144,18 @@ export function Director() {
 
   const terrainPath = useMemo(() => {
     const pts = hops.map((_, i) => terrainHop(i))
-    const istanbul = terrainHop(2)
     const camOff = V(-9, 27, 31)
     const positions: THREE.Vector3[] = [V(4, 56, 52)]
     const targets: THREE.Vector3[] = [V(2, 0, 2)]
     pts.forEach((p, i) => {
-      if (hops[i].remote) {
-        positions.push(istanbul.clone().add(V(17, 27, 27)))
-        targets.push(istanbul.clone().add(V(-9, 5, -8)))
+      if (offMap(hops[i])) {
+        // Harita dışındaki durak: bir önceki duraktan, paketin gittiği yöne doğru bak (yay ufka uzanır)
+        let k = i - 1
+        while (k > 0 && offMap(hops[k])) k--
+        const from = pts[Math.max(0, k)]
+        const dir = V(p.x - from.x, 0, p.z - from.z).normalize()
+        positions.push(from.clone().add(camOff).addScaledVector(dir, -4).add(V(0, 2, 0)))
+        targets.push(from.clone().addScaledVector(dir, 30).setY(0))
       } else {
         positions.push(p.clone().add(camOff))
         targets.push(p.clone())
@@ -193,6 +203,7 @@ export function Director() {
     }
     if (debugShot.pose) mixPose(debugShot.pose, debugShot.pose, 0, shot)
     debugShot.camera = camera
+    debugShot.gl = state.gl
 
     /* ---- dünyalar arası kesme: parçacıklar ekranda yerinde kalsın ---- */
     const cut = world !== lastWorld.current
@@ -229,17 +240,17 @@ export function Director() {
     // fare paralaksı: hedef etrafında küçük bir yörünge
     const yaw = px * 0.045 + frame.look.yaw + Math.sin(t * 0.37) * hand * 3
     const pitch = py * 0.03 + frame.look.pitch + Math.sin(t * 0.29 + 1.3) * hand * 2
-    const offset = camera.position.clone().sub(sm.target)
-    offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), -yaw)
-    const right = new THREE.Vector3().crossVectors(offset, new THREE.Vector3(0, 1, 0)).normalize()
+    const offset = tmpOffset.copy(camera.position).sub(sm.target)
+    offset.applyAxisAngle(AXIS_Y, -yaw)
+    const right = tmpRight.crossVectors(offset, AXIS_Y).normalize()
     if (right.lengthSq() > 0.5) offset.applyAxisAngle(right, pitch)
     camera.position.copy(sm.target).add(offset)
     lookTarget.copy(sm.target)
     lookTarget.x += Math.sin(t * 0.53) * hand * dist
     lookTarget.y += Math.sin(t * 0.41 + 2.1) * hand * dist
     // tam tepeden bakarken lookAt'in bozulmaması için yukarı vektörü kuzeye çevir
-    const vertical = Math.abs(offset.clone().normalize().y)
-    camera.up.set(0, 1, 0).lerp(new THREE.Vector3(0, 0, -1), smoothstep(0.96, 0.9995, vertical)).normalize()
+    const vertical = Math.abs(offset.y / Math.max(1e-6, offset.length()))
+    camera.up.set(0, 1, 0).lerp(AXIS_NEG_Z, smoothstep(0.96, 0.9995, vertical)).normalize()
     camera.lookAt(lookTarget)
     // Dikey ekranlarda görüş alanını biraz aç: yatay için kurulan kadrajlar dar ekranda kesilmesin
     const aspect = state.size.width / Math.max(1, state.size.height)

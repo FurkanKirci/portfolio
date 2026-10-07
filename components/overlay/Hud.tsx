@@ -24,10 +24,12 @@ export function Hud() {
   const visible = power !== 'off'
 
   useEffect(
-    () =>
-      onFrame(() => {
+    () => {
+      let last = 0
+      return onFrame((_, time) => {
         const app = useApp.getState()
-        if (status.current && app.power !== 'off') {
+        if (status.current && app.power !== 'off' && time - last > 0.25) {
+          last = time
           const up = formatUptime(Date.now() - (app.uptimeFrom || Date.now()))
           const mhz = app.overclock ? '31.337' : '25.000'
           const txt = `çalışma ${up} · yük ${frame.load.toFixed(2)} · ${mhz} MHz`
@@ -36,10 +38,11 @@ export function Hud() {
         chapters.slice(1).forEach((c, i) => {
           const el = bars.current[i]
           if (!el) return
-          const l = frame.locals[c.id] ?? 0
-          el.style.transform = `scaleX(${l.toFixed(3)})`
+          const v = `scaleX(${(frame.locals[c.id] ?? 0).toFixed(3)})`
+          if (el.style.transform !== v) el.style.transform = v
         })
-      }),
+      })
+    },
     [],
   )
 

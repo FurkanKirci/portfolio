@@ -1,11 +1,12 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { chapters } from '@/lib/content'
 import { startLoop } from '@/lib/loop'
 import { installDebug } from '@/lib/debug'
 import { loadSettings, useApp } from '@/lib/store'
+import { detectTier, isSoftwareRenderer } from '@/lib/quality'
 import { Controllers } from './system/Controllers'
 import { Standby } from './overlay/Standby'
 import { BootScreen } from './overlay/BootScreen'
@@ -26,25 +27,33 @@ import { Toasts } from './overlay/Toasts'
 
 const Stage = dynamic(() => import('./canvas/Stage'), { ssr: false })
 
-function hasWebGL2() {
+/** Sahne kurulmadan önce bir deneme bağlamıyla ekran kartını tanı: kademe baştan doğru seçilsin, sahne iki kez kurulmasın. */
+function probeGPU() {
   try {
     const c = document.createElement('canvas')
-    return !!c.getContext('webgl2')
+    const ctx = c.getContext('webgl2')
+    if (!ctx) return { ok: false, tier: 'low' as const, software: false }
+    const tier = detectTier(ctx)
+    const software = isSoftwareRenderer(ctx)
+    ctx.getExtension('WEBGL_lose_context')?.loseContext()
+    return { ok: true, tier, software }
   } catch {
-    return false
+    return { ok: false, tier: 'low' as const, software: false }
   }
 }
 
 export default function Computer({ send }: { send: SendFn }) {
   const webgl = useApp((s) => s.webgl)
+  const [inited, setInited] = useState(false)
 
   useEffect(() => {
-    const ok = hasWebGL2()
+    const gpu = probeGPU()
     const settings = loadSettings()
     // ?q=low|medium|high|ultra → kaliteyi bu oturum için zorla (test ve karşılaştırma için)
     const q = new URLSearchParams(window.location.search).get('q')
     if (q === 'low' || q === 'medium' || q === 'high' || q === 'ultra') settings.quality = q
-    useApp.getState().set({ settings, webgl: ok, ready: !ok })
+    useApp.getState().set({ settings, webgl: gpu.ok, ready: !gpu.ok, autoTier: gpu.software ? 'low' : gpu.tier, softwareGL: gpu.software })
+    setInited(true)
     startLoop()
     if (process.env.NODE_ENV !== 'production' || new URLSearchParams(window.location.search).has('debug')) installDebug()
   }, [])
@@ -62,7 +71,7 @@ export default function Computer({ send }: { send: SendFn }) {
 
   return (
     <>
-      {webgl && <Stage />}
+      {inited && webgl && <Stage />}
       <Veils />
       <LabelsLayer />
       <main id="icerik">

@@ -38,7 +38,7 @@ export const chapters: Chapter[] = [
   { id: 'kernel', code: '0x02', cmd: 'çekirdek', title: 'Yetenekler', line: 'Açılışta yüklenen modüller.', length: 2.6, jump: 0.36, slug: 'yetenekler' },
   { id: 'procs', code: '0x03', cmd: 'süreçler', title: 'Projeler', line: 'Çalışan her şey bir süreçtir.', length: 3.2, jump: 0.3, slug: 'projeler' },
   { id: 'dmesg', code: '0x04', cmd: 'dmesg', title: 'Deneyim', line: 'Zaman damgalı kayıtlar.', length: 3.4, jump: 0.1, slug: 'deneyim' },
-  { id: 'trace', code: '0x05', cmd: 'traceroute', title: 'Yolculuk', line: 'Her şehir bir atlama.', length: 3.4, jump: 0.08, slug: 'yolculuk' },
+  { id: 'trace', code: '0x05', cmd: 'traceroute', title: 'Yolculuk', line: 'Her şehir bir atlama.', length: 4.6, jump: 0.06, slug: 'yolculuk' },
   { id: 'shutdown', code: '0x06', cmd: 'shutdown', title: 'İletişim', line: 'Kapanmadan önce.', length: 2.8, jump: 0.97, slug: 'iletisim' },
 ]
 
@@ -611,21 +611,33 @@ export interface Hop {
   n: number
   host: string
   city: string
+  /** yurt dışındaki duraklar için ülke */
+  country?: string
   lat: number
   lon: number
+  /** bilinmiyorsa boş bırak: listede "—" görünür */
   year: string
   note: string
+  /** uzaktan çalışma: paket gider ama yanıt gelmez ("* * *") */
   remote?: boolean
+  /** haritanın dışında kalan gerçek bir durak (yurt dışı) */
+  abroad?: boolean
 }
 
 export const hops: Hop[] = [
-  { n: 1, host: 'elazig', city: 'Elazığ', lat: 38.6748, lon: 39.2225, year: '2000', note: 'başlangıç' },
-  { n: 2, host: 'konya', city: 'Konya', lat: 37.8746, lon: 32.4932, year: '2019', note: 'NEÜ · lisans · ASELSAN stajı' },
-  { n: 3, host: 'istanbul', city: 'İstanbul', lat: 41.0082, lon: 28.9784, year: '2024', note: 'Rheinland, uzaktan' },
-  { n: 4, host: 'duesseldorf', city: 'Düsseldorf', lat: 51.2277, lon: 6.7735, year: '2024', note: 'tünel · yanıt yok', remote: true },
-  { n: 5, host: 'istanbul', city: 'İstanbul', lat: 41.0082, lon: 28.9784, year: '2025', note: 'öğretmenlik' },
-  { n: 6, host: 'konya', city: 'Konya', lat: 37.8746, lon: 32.4932, year: '2026', note: 'MEDAŞ · yüksek lisans' },
+  { n: 1, host: 'elazig', city: 'Elazığ', lat: 38.6748, lon: 39.2225, year: '2000', note: 'doğum' },
+  { n: 2, host: 'kirikkale', city: 'Kırıkkale', lat: 39.8468, lon: 33.5153, year: '', note: 'ilkokul' },
+  { n: 3, host: 'trablus', city: 'Trablus', country: 'Libya', lat: 32.8872, lon: 13.1913, year: '', note: 'Türk Okulu', abroad: true },
+  { n: 4, host: 'kirikkale', city: 'Kırıkkale', lat: 39.8468, lon: 33.5153, year: '', note: 'lise' },
+  { n: 5, host: 'konya', city: 'Konya', lat: 37.8746, lon: 32.4932, year: '2019', note: 'NEÜ · lisans · ASELSAN stajı' },
+  { n: 6, host: 'istanbul', city: 'İstanbul', lat: 41.0082, lon: 28.9784, year: '2024', note: 'Rheinland, uzaktan' },
+  { n: 7, host: 'duesseldorf', city: 'Düsseldorf', lat: 51.2277, lon: 6.7735, year: '2024', note: 'tünel · yanıt yok', remote: true },
+  { n: 8, host: 'istanbul', city: 'İstanbul', lat: 41.0082, lon: 28.9784, year: '2025', note: 'öğretmenlik' },
+  { n: 9, host: 'konya', city: 'Konya', lat: 37.8746, lon: 32.4932, year: '2026', note: 'MEDAŞ · yüksek lisans' },
 ]
+
+/** Haritanın dışında kalan duraklar (yurt dışı ya da uzaktan) */
+export const offMap = (h: Hop) => !!(h.remote || h.abroad)
 
 /* --------------------------------------------------------------- iletişim */
 

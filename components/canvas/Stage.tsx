@@ -5,7 +5,7 @@ import { Canvas, advance, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { setRenderer } from '@/lib/loop'
-import { detectTier, stepDown, tiers } from '@/lib/quality'
+import { baseDpr, stepDown, tiers } from '@/lib/quality'
 import { frame, resolvedTier, useApp, type Tier } from '@/lib/store'
 import { Board } from './board/Board'
 import { Director } from './Director'
@@ -17,30 +17,83 @@ import { Scheduler } from './scheduler/Scheduler'
 import { Analyzer } from './analyzer/Analyzer'
 import { Terrain } from './terrain/Terrain'
 
-/** Kare hızı uzun süre düşük kalırsa kaliteyi bir kademe indirir. */
+/**
+ * Akıcılık önce gelir. Kare hızı düşünce önce çizim çözünürlüğü kademeli olarak iner (dinamik çözünürlük);
+ * bu da yetmezse kalite bir kademe düşer. Kare hızı uzun süre yüksek kalırsa çözünürlük geri çıkar.
+ */
 function AutoQuality() {
   const gl = useThree((s) => s.gl)
+  const setDpr = useThree((s) => s.setDpr)
   useEffect(() => {
-    const auto = detectTier(gl.getContext())
-    useApp.getState().set({ autoTier: auto })
+    const MIN = 0.6
+    // ?res=1 gibi bir parametre çözünürlük ölçeğini sabitler (karşılaştırma ve ekran görüntüsü için)
+    const fixed = Number(new URLSearchParams(window.location.search).get('res')) || 0
+    let scale = fixed || 1
     let low = 0
-    let samples = 0
+    let high = 0
+    let atMinLow = 0
+    let warm = 0
+    const apply = () => {
+      const cfg = tiers[resolvedTier()]
+      const dpr = Math.max(0.4, baseDpr(cfg, window.innerWidth, window.innerHeight) * scale)
+      if (Math.abs(gl.getPixelRatio() - dpr) > 0.01) setDpr(dpr)
+      const size = gl.getDrawingBufferSize(new THREE.Vector2())
+      const r = useApp.getState().render
+      if (r.w !== size.x || r.h !== size.y || r.scale !== scale) useApp.getState().set({ render: { w: size.x, h: size.y, scale } })
+    }
+    apply()
     const id = window.setInterval(() => {
       const app = useApp.getState()
-      if (app.settings.quality !== 'auto' || app.power !== 'on' || document.hidden) return
-      samples++
-      if (frame.fps < 38) low++
-      else low = Math.max(0, low - 1)
-      if (low >= 4 && samples > 6) {
+      if (document.hidden || app.bios || !app.ready) return
+      // açılıştaki ilk saniyeler (shader derleme, dokular) ölçüme katılmasın
+      if (warm++ < 3 || fixed) return
+      const fps = frame.fps
+      if (fps < 50) {
+        low++
+        high = 0
+      } else if (fps > 58) {
+        high++
+        low = 0
+      } else {
+        low = Math.max(0, low - 1)
+        high = Math.max(0, high - 1)
+      }
+      if (low >= 2 && scale > MIN) {
+        scale = Math.max(MIN, Math.round(scale * 0.84 * 100) / 100)
+        low = 0
+        apply()
+      } else if (high >= 5 && scale < 1) {
+        scale = Math.min(1, Math.round(scale * 1.1 * 100) / 100)
+        high = 0
+        apply()
+      }
+      // çözünürlük en altta ve hâlâ ağırsa: kaliteyi bir kademe indir
+      if (app.settings.quality === 'auto' && scale <= MIN && fps < 42) atMinLow++
+      else atMinLow = Math.max(0, atMinLow - 1)
+      if (atMinLow >= 4) {
         const next = stepDown(app.autoTier)
         if (next !== app.autoTier) {
           app.set({ autoTier: next })
-          low = 0
+          scale = 0.8
+          window.setTimeout(apply, 50)
         }
+        atMinLow = 0
       }
-    }, 1000)
-    return () => window.clearInterval(id)
-  }, [gl])
+    }, 750)
+    const onResize = () => apply()
+    window.addEventListener('resize', onResize)
+    const unsub = useApp.subscribe((s, p) => {
+      if (s.settings.quality !== p.settings.quality || s.autoTier !== p.autoTier) {
+        if (s.settings.quality !== p.settings.quality) scale = 1
+        window.setTimeout(apply, 50)
+      }
+    })
+    return () => {
+      window.clearInterval(id)
+      window.removeEventListener('resize', onResize)
+      unsub()
+    }
+  }, [gl, setDpr])
   return null
 }
 
@@ -63,6 +116,25 @@ function Warmup() {
       if (!o.visible) {
         o.visible = true
         hidden.push(o)
+      }
+    })
+    // dokuları da şimdi yükle: dünyalar arası ilk geçişte takılma olmasın
+    const seen = new Set<THREE.Texture>()
+    scene.traverse((o) => {
+      const mats = (o as THREE.Mesh).material
+      for (const m of Array.isArray(mats) ? mats : mats ? [mats] : []) {
+        for (const v of Object.values(m as unknown as Record<string, unknown>)) {
+          if (v instanceof THREE.Texture && !seen.has(v)) seen.add(v)
+        }
+        const u = (m as THREE.ShaderMaterial).uniforms
+        if (u) for (const x of Object.values(u)) if (x?.value instanceof THREE.Texture && !seen.has(x.value)) seen.add(x.value)
+      }
+    })
+    seen.forEach((tex) => {
+      try {
+        gl.initTexture(tex)
+      } catch {
+        /* yoksay */
       }
     })
     gl.compileAsync(scene, camera)
@@ -91,14 +163,14 @@ function World({ tier }: { tier: Tier }) {
         <Lightformer form="ring" intensity={1.2} color="#ffffff" position={[3, 6, 8]} scale={3} />
       </Environment>
       <Director />
-      <Board texSize={cfg.boardTex} aniso={tier === 'low' ? 4 : 8} />
+      <Board texSize={cfg.boardTex} aniso={tier === 'low' ? 4 : 8} lite={cfg.lite} />
       <City density={cfg.cityDensity} />
       <Scheduler />
       <Analyzer />
       <Terrain />
       <Particles N={cfg.particles} cityDensity={cfg.cityDensity} />
       <Motes count={cfg.motes} />
-      <Effects dof={cfg.dof && settings.dof} bloom={cfg.bloom && settings.bloom} ao={cfg.ao} />
+      <Effects dof={cfg.dof && settings.dof} bloom={cfg.bloom && settings.bloom} ao={cfg.ao} smaa={cfg.smaa} />
       <Warmup />
       <AutoQuality />
     </>
@@ -119,8 +191,10 @@ export default function Stage() {
 
   useEffect(() => () => setRenderer(null), [])
 
+  // İlk piksel oranı: kademenin piksel bütçesine göre. Sonrasını AutoQuality yönetir.
+  const [initialDpr] = useState(() => baseDpr(tiers[resolvedTier()], window.innerWidth, window.innerHeight))
+
   if (failed) return null
-  const cfg = tiers[tier]
 
   return (
     <div className="stage" aria-hidden="true">
@@ -128,7 +202,7 @@ export default function Stage() {
         frameloop="never"
         eventSource={typeof document !== 'undefined' ? document.body : undefined}
         eventPrefix="client"
-        dpr={[1, cfg.dprMax]}
+        dpr={initialDpr}
         gl={{ antialias: false, powerPreference: 'high-performance', alpha: false, stencil: false, depth: true }}
         camera={{ fov: 30, near: 0.06, far: 900, position: [12, 2, 11] }}
         flat

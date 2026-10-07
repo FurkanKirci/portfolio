@@ -90,13 +90,14 @@ export function lockScroll(locked: boolean) {
 function tick(now: number) {
   rafId = requestAnimationFrame(tick)
   const time = now / 1000
-  const dt = lastNow ? Math.min(0.1, Math.max(0.001, time - lastNow)) : 1 / 60
+  const raw = lastNow ? Math.max(0.001, time - lastNow) : 1 / 60
+  const dt = Math.min(0.1, raw)
   lastNow = time
   frame.time = time
   frame.dt = dt
 
-  // FPS ölçümü (BIOS'taki gösterge ve otomatik kalite için)
-  fpsAcc += dt
+  // FPS ölçümü (BIOS'taki gösterge ve otomatik kalite için): kırpılmamış kare süresiyle
+  fpsAcc += Math.min(raw, 1)
   fpsFrames++
   if (fpsAcc > 0.5) {
     frame.fps = fpsFrames / fpsAcc
@@ -126,8 +127,11 @@ function tick(now: number) {
     if (useApp.getState().chapter !== id) useApp.getState().set({ chapter: id })
   }
 
+  const t0 = performance.now()
   for (const fn of subscribers) fn(dt, time)
   renderFn?.(now)
+  // ana iş parçacığında geçen süre (JS + WebGL komutları): BIOS ve hata ayıklama için
+  frame.cpuMs += (performance.now() - t0 - frame.cpuMs) * 0.05
   if (frame.snap > 0) frame.snap--
 }
 

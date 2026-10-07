@@ -1,9 +1,9 @@
 'use client'
 
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
-import { hops } from '@/lib/content'
+import { hops, offMap } from '@/lib/content'
 import { activeHop, flightT } from '@/lib/film'
 import { frame, useApp } from '@/lib/store'
 import { fogGLSL } from '../glsl'
@@ -167,7 +167,7 @@ function hopPoint(t: TerrainData | null, i: number) {
   const [x, z] = lonLatToXZ(h.lon, h.lat)
   const u = x / MAP_W + 0.5
   const v = z / MAP_D + 0.5
-  const y = t && !h.remote ? heightAt(t, u, v) + 0.06 : 0.6
+  const y = t && !offMap(h) ? heightAt(t, u, v) + 0.06 : 0.6
   return new THREE.Vector3(x, y, z)
 }
 
@@ -254,7 +254,7 @@ function build(t: TerrainData) {
   const hopMarker: number[] = []
   const byHost = new Map<string, number>()
   hops.forEach((h, i) => {
-    if (h.remote) {
+    if (offMap(h)) {
       hopMarker.push(-1)
       return
     }
@@ -303,7 +303,7 @@ function build(t: TerrainData) {
     const remote = hops[i + 1].remote || hops[i].remote
     const mid = a.clone().add(b).multiplyScalar(0.5)
     mid.y += 1.6 + dist * (remote ? 0.32 : 0.22)
-    if (hops[i].remote) {
+    if (offMap(hops[i])) {
       // dönüş yayı, gidişten biraz ayrık dursun
       mid.x += 2
       mid.z += 2
@@ -352,6 +352,20 @@ export function Terrain() {
   }, [])
   const world = useMemo(() => (data ? build(data) : null), [data])
   useEffect(() => () => world?.dispose(), [world])
+  const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
+  useEffect(() => {
+    // harita verisi açılıştan sonra gelir: shader'ları şimdi derle, yolculuğa girerken takılmasın
+    if (!world) return
+    const g = world.group
+    const wasVisible = g.visible
+    g.visible = true
+    gl.compileAsync(g, camera)
+      .catch(() => undefined)
+      .finally(() => {
+        g.visible = wasVisible
+      })
+  }, [world, gl, camera])
 
   useFrame(() => {
     if (!world) return

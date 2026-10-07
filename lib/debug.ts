@@ -43,6 +43,30 @@ export function installDebug() {
       debugShot.pose = pos && target ? { pos: new THREE.Vector3(...pos), target: new THREE.Vector3(...target), fov, range } : null
       frame.snap = 2
     },
+    /** çizim istatistikleri: kare hızı, çizim çağrısı, üçgen, shader programı, piksel oranı */
+    stats: async () => {
+      const gl = debugShot.gl
+      if (!gl) return null
+      const size = gl.getDrawingBufferSize(new THREE.Vector2())
+      // bir karedeki bütün çizimleri say (son işleme geçişleri dahil)
+      gl.info.autoReset = false
+      gl.info.reset()
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+      const calls = gl.info.render.calls
+      const triangles = gl.info.render.triangles
+      gl.info.autoReset = true
+      return {
+        fps: Math.round(frame.fps * 10) / 10,
+        cpuMs: Math.round(frame.cpuMs * 10) / 10,
+        calls,
+        triangles,
+        programs: gl.info.programs?.length ?? 0,
+        dpr: gl.getPixelRatio(),
+        buffer: `${size.x}x${size.y}`,
+        tier: useApp.getState().autoTier,
+        quality: useApp.getState().settings.quality,
+      }
+    },
     /** dünya noktasını ekran pikseline çevir */
     project: (x: number, y: number, z: number) => {
       const cam = debugShot.camera
