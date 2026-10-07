@@ -1,105 +1,53 @@
-import type { Metadata } from 'next'
-import { Space_Grotesk, Orbitron } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import { siteUrl } from '@/lib/site'
 import './globals.css'
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-space-grotesk',
-  display: 'swap',
-})
-
-const orbitron = Orbitron({
-  subsets: ['latin'],
-  weight: ['500', '600', '700', '800', '900'],
-  variable: '--font-orbitron',
-  display: 'swap',
-})
+const title = 'Muhammed Furkan Kırcı — Yazılım Mühendisi'
+const description =
+  'Açılıştan kapanışa bir bilgisayar: Muhammed Furkan Kırcı’nın portfolyosu. ASP.NET Core, React, PostgreSQL ve Oracle ile kurumsal sistemler; prim hesaplama, e-imza onay akışları, PDKS ve ERP.'
 
 export const metadata: Metadata = {
-  title: 'Muhammed Furkan Kırci - Bilgisayar Mühendisi & Fullstack Developer',
-  description: 'Bilgisayar Mühendisi ve Fullstack Developer Muhammed Furkan Kırci\'nin kişisel portfolio sitesi. React, Next.js, Node.js, Java ve MongoDB teknolojileri ile projeler.',
+  metadataBase: new URL(siteUrl()),
+  title,
+  description,
+  applicationName: 'MFK',
+  authors: [{ name: 'Muhammed Furkan Kırcı', url: 'https://github.com/FurkanKirci' }],
+  creator: 'Muhammed Furkan Kırcı',
   keywords: [
     'Muhammed Furkan Kırcı',
+    'Yazılım Mühendisi',
     'Bilgisayar Mühendisi',
-    'Fullstack Developer',
-    'React Developer',
-    'Next.js Developer',
-    'Node.js Developer',
-    'Java Developer',
-    'MongoDB',
-    'Portfolio',
-    'Web Development',
-    'Software Engineer',
-    'İstanbul',
-    'Türkiye'
+    'ASP.NET Core',
+    '.NET',
+    'React',
+    'PostgreSQL',
+    'Oracle',
+    'Konya',
+    'portfolyo',
   ],
-  authors: [{ name: 'Muhammed Furkan Kırci' }],
-  creator: 'Muhammed Furkan Kırci',
-  publisher: 'Muhammed Furkan Kırci',
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  metadataBase: new URL('https://gariban.space'),
-  alternates: {
-    canonical: '/',
-  },
+  alternates: { canonical: '/' },
   openGraph: {
-    title: 'Muhammed Furkan Kırci - Bilgisayar Mühendisi & Fullstack Developer',
-    description: 'Bilgisayar Mühendisi ve Fullstack Developer Muhammed Furkan Kırci\'nin kişisel portfolio sitesi. React, Next.js, Node.js, Java ve MongoDB teknolojileri ile projeler.',
-    url: 'https://gariban.space',
-    siteName: 'Muhammed Furkan Kırci Portfolio',
-    images: [
-      {
-        url: '/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Muhammed Furkan Kırci - Portfolio',
-      },
-    ],
-    locale: 'tr_TR',
     type: 'website',
+    locale: 'tr_TR',
+    url: '/',
+    siteName: 'Muhammed Furkan Kırcı',
+    title,
+    description,
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Muhammed Furkan Kırci - Bilgisayar Mühendisi & Fullstack Developer',
-    description: 'Bilgisayar Mühendisi ve Fullstack Developer Muhammed Furkan Kırci\'nin kişisel portfolio sitesi.',
-    images: ['/og-image.jpg'],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-  verification: {
-    google: 'your-google-verification-code',
-    yandex: 'your-yandex-verification-code',
-  },
+  twitter: { card: 'summary_large_image', title, description },
+  robots: { index: true, follow: true },
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export const viewport: Viewport = {
+  themeColor: '#05070b',
+  colorScheme: 'dark',
+  width: 'device-width',
+  initialScale: 1,
+}
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="tr" className={`${spaceGrotesk.variable} ${orbitron.variable}`}>
-      <head>
-        <link rel="icon" type="image/png" sizes="32x32" href="/MFKLogo.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/MFKLogo.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#000000" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </head>
+    <html lang="tr">
       <body>{children}</body>
     </html>
   )
